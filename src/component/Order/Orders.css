@@ -1,0 +1,148 @@
+.orders-container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+  }
+  
+  .orders-container h2 {
+    text-align: center;
+    margin-bottom: 2rem;
+    color: #333;
+  }
+  
+  .orders-loading,
+  .orders-error,
+  .no-orders {
+    text-align: center;
+    padding: 2rem;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin: 1rem 0;
+  }
+  
+  .orders-error {
+    color: #dc3545;
+  }
+  
+  .retry-button {
+    margin-top: 1rem;
+    padding: 0.5rem 1rem;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  
+  .retry-button:hover {
+    background-color: #0056b3;
+  }
+  
+  .order-card {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+  }
+  
+  .order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+  }
+  
+  .order-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .order-id {
+    font-weight: bold;
+    color: #495057;
+  }
+  
+  .order-date {
+    color: #6c757d;
+    font-size: 0.9rem;
+  }
+  
+  .order-status {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+  
+  .order-details {
+    padding: 1rem;
+  }
+  
+  .order-item {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid #dee2e6;
+  }
+  
+  .order-item:last-child {
+    border-bottom: none;
+  }
+  
+  .item-image {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 4px;
+  }
+  
+  .item-info {
+    flex: 1;
+  }
+  
+  .item-info h4 {
+    margin: 0 0 0.5rem 0;
+    color: #212529;
+  }
+  
+  .item-info p {
+    margin: 0.25rem 0;
+    color: #495057;
+  }
+  
+  .order-footer {
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+  }
+  
+  .order-total {
+    text-align: right;
+    font-weight: bold;
+    color: #212529;
+    font-size: 1.1rem;
+  }
+  
+  @media (max-width: 768px) {
+    .order-header {
+      flex-direction: column;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+  
+    .order-item {
+      flex-direction: column;
+    }
+  
+    .item-image {
+      width: 100%;
+      height: 200px;
+    }
+  }

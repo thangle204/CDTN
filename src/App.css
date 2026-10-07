@@ -1,0 +1,46 @@
+/* Bao bọc toàn bộ ứng dụng để Footer luôn nằm dưới cùng */
+.App {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #f8f9fa; /* Màu nền nhẹ cho toàn trang */
+}
+
+/* THÙNG CHỨA TRUNG TÂM: Đây là phần quan trọng nhất */
+.container {
+  width: 100%;
+  max-width: 1200px; /* Độ rộng tối đa của nội dung */
+  margin: 0 auto;    /* Căn giữa khối này trên màn hình */
+  padding: 0 20px;   /* Khoảng cách an toàn 2 bên mép màn hình */
+  box-sizing: border-box;
+}
+
+/* Tùy chỉnh cho phần Header và Footer để nội dung bên trong cũng vào giữa */
+header, footer {
+  width: 100%;
+  background-color: #ffffff;
+}
+
+/* Nếu bạn muốn Header/Footer có màu nền trải dài nhưng chữ vẫn ở giữa */
+.header-content, .footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Các tùy chỉnh cũ của React (giữ lại nếu bạn còn dùng logo xoay) */
+.App-logo {
+  height: 20vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+@keyframes App-logo-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

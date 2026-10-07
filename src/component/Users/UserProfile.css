@@ -1,0 +1,142 @@
+.user-profile-container {
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 0 20px;
+  }
+  
+  .profile-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+  }
+  
+  .profile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .profile-header h2 {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 24px;
+  }
+  
+  .edit-profile-btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+  }
+  
+  .edit-profile-btn:hover {
+    background: #2980b9;
+  }
+  
+  .profile-info .info-group {
+    margin-bottom: 20px;
+  }
+  
+  .info-group label,
+  .form-group label {
+    display: block;
+    color: #7f8c8d;
+    margin-bottom: 8px;
+    font-size: 14px;
+  }
+  
+  .info-group p {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 16px;
+    padding: 8px 0;
+  }
+  
+  .profile-form .form-group {
+    margin-bottom: 20px;
+  }
+  
+  .form-group input,
+  .form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  
+  .form-group input:disabled {
+    background: #f8f9fa;
+    cursor: not-allowed;
+  }
+  
+  .form-group textarea {
+    resize: vertical;
+    min-height: 100px;
+  }
+  
+  .form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 30px;
+  }
+  
+  .save-btn,
+  .cancel-btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s ease;
+  }
+  
+  .save-btn {
+    background: #2ecc71;
+    color: white;
+  }
+  
+  .save-btn:hover {
+    background: #27ae60;
+  }
+  
+  .cancel-btn {
+    background: #e74c3c;
+    color: white;
+  }
+  
+  .cancel-btn:hover {
+    background: #c0392b;
+  }
+  
+  @media (max-width: 768px) {
+    .user-profile-container {
+      margin: 20px auto;
+    }
+  
+    .profile-card {
+      padding: 20px;
+    }
+  
+    .profile-header {
+      flex-direction: column;
+      gap: 15px;
+      align-items: flex-start;
+    }
+  
+    .form-actions {
+      flex-direction: column;
+    }
+  
+    .save-btn,
+    .cancel-btn {
+      width: 100%;
+    }
+  }

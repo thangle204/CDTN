@@ -1,0 +1,45 @@
+{
+  "name": "shoe-store-frontend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "SHOE STORE - React shoe store frontend",
+  "private": true,
+  "dependencies": {
+    "axios": "^1.6.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-icons": "^4.12.0",
+    "react-router-dom": "^6.20.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.22",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.19",
+    "vite": "^7.2.7",
+    "esbuild": "^0.25.12",
+    "@babel/parser": "^7.28.5",
+    "@babel/traverse": "^7.28.5"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node tests/customer-flows.test.cjs && node --test tests/product-variants.test.cjs tests/admin-products.test.cjs tests/admin-orders.test.cjs tests/auth-context.test.cjs tests/session-api.test.cjs tests/profile-session.test.cjs tests/catalog-filters.test.cjs tests/delivery-return.test.cjs"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

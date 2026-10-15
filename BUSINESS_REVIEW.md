@@ -1,6 +1,6 @@
 # Rà soát nghiệp vụ SHOE STORE
 
-Ngày rà soát: 14/10/2026. Cập nhật sửa ba lỗi P1: 15/10/2026.
+Ngày rà soát: 14/10/2026. Cập nhật sửa ba lỗi P1 và bổ sung giao thất bại/kiểm hàng quay về: 15/10/2026.
 
 Phạm vi: sản phẩm/ảnh/biến thể, tồn kho, giỏ, checkout, thanh toán, hủy/hoàn tiền, voucher, tài khoản, nhân viên và báo cáo quản trị. Sau đợt rà soát, đã sửa ba lỗi P1 số 11–13 và bổ sung hồi quy. Không sửa hoặc in giá trị bí mật trong `.env`; lịch sử/kết quả kiểm tra MongoDB được ghi riêng.
 
@@ -8,9 +8,9 @@ P1: ưu tiên sửa trước khi bán thật vì có thể sai đơn, sai hoàn 
 
 ## Trạng thái sau khi sửa lỗi
 
-**Đã xử lý các trường hợp của lỗi 1–4, 6–8 và 10–13.** Kết quả sau sửa: **154 kiểm tra backend, 102 kiểm tra frontend đều đạt; build frontend thành công.** Các ca mới kiểm tra pending/commit/rollback, token giữ kho, cập nhật hồ sơ theo phiên và các nhánh lỗi ghi. Các mục còn mở bên dưới chưa được sửa trong đợt này.
+**Đã xử lý các trường hợp của lỗi 1–4, 6–8, 10–13 và 19.** Đã bổ sung luồng giao thất bại/từ chối COD, kiểm tra hàng quay về và xử lý kho/voucher/hoàn tiền theo chính sách người dùng chốt. Kết quả mới nhất: **206 kiểm tra backend, 131 kiểm tra frontend đều đạt; build frontend thành công.** Các mục còn mở bên dưới chưa được sửa trong đợt này.
 
-Các mục đang mở: **5, 9 và 14–20**. Ba lỗi P1 số 11–13 đã được chuyển thành kiểm tra hồi quy yêu cầu hành vi đúng. Bản này vẫn cần đối soát thủ công khi không xác định được kết quả ghi database; không cung cấp phục hồi tự động sau mọi sự cố.
+Các mục đang mở: **5, 9, 14–18 và 20**. Ba lỗi P1 số 11–13 và lỗi phản hồi danh sách cũ số 19 đã được chuyển thành kiểm tra hồi quy yêu cầu hành vi đúng. Bản này vẫn cần đối soát thủ công khi không xác định được kết quả ghi database; không cung cấp phục hồi tự động sau mọi sự cố.
 
 ## Kết quả rà soát bổ sung — các vấn đề đang mở
 
@@ -23,10 +23,9 @@ Các mục đang mở: **5, 9 và 14–20**. Ba lỗi P1 số 11–13 đã đư�
 | 18 | P2 | Callback thêm giỏ cũ tải lại giày A sau khi đã chuyển route B: màn hình hiển thị A nhưng lần thêm tiếp gửi ID B. |
 | 5 | P2 | Dòng sản phẩm đã mất bị giấu khỏi GET giỏ. Hiện checkout trả 409 do giỏ xác nhận khác giỏ gốc, tải lại vẫn thiếu dòng để khách xóa. |
 | 9 | P2 | Sau reverse proxy, 21 địa chỉ forwarded khác nhau vẫn dùng chung hạn mức; request thứ 21 nhận 429. |
-| 19 | P3 | Danh sách đơn tải trước khi hủy trả muộn, ghi đè đơn đã hủy thành Đang xử lý và làm mất thông báo chờ hoàn tiền. |
 | 20 | P3 | Nhãn Top khách hàng nói “Theo số đơn”, nhưng API sắp xếp theo tổng chi tiêu trước. |
 
-Các mục 11–19 và hai lỗi cũ 5/9 đã được kiểm chứng ngoại tuyến bằng controller/component thật ở đợt rà soát. Ba mục 11–13 hiện đã sửa. Mục 14 vẫn cần một lỗi ghi tạm thời để kích hoạt tình huống đã mô tả; không giả định tiến trình chết. Kiểm tra frontend vẫn dùng hooks/API giả lập, chưa chạy trình duyệt thật.
+Các mục 11–19 và hai lỗi cũ 5/9 đã được kiểm chứng ngoại tuyến bằng controller/component thật ở đợt rà soát. Các mục 11–13 và 19 hiện đã sửa. Mục 14 vẫn cần một lỗi ghi tạm thời để kích hoạt tình huống đã mô tả; không giả định tiến trình chết. Bằng chứng rà soát ban đầu dùng hooks/API giả lập; kết quả Chrome cho chức năng giao thất bại bổ sung được ghi riêng bên dưới.
 
 ## Lịch sử xác minh MongoDB thật — đợt tích hợp trước, ngày 14/10/2026
 
@@ -44,7 +43,7 @@ Các mục 11–19 và hai lỗi cũ 5/9 đã được kiểm chứng ngoại tu
 | 3. Mất mọi admin | Khóa chung trong database, kiểm tra lại quyền và phiên sau khi giữ khóa, đếm admin Customer + Staff, chỉ chủ sở hữu được mở khóa. | `backend/tests/adminConcurrency.test.js` |
 | 4. Xóa SKU giữa checkout | DELETE lưu trữ nguyên tử, giữ SKU/biến thể; chặn bán/sửa/bật lại. Hủy hoặc bù checkout vẫn hoàn đúng kho. | `backend/tests/productArchive.test.js`, `backend/tests/catalogApi.test.js` |
 
-Lỗi **5, 9, 14–20** cùng các khoảng trống nghiệp vụ bên dưới vẫn cần xử lý. Lưu trữ SKU ngăn phát sinh mới dòng mất sản phẩm do DELETE, nhưng chưa sửa cách trả các dòng giỏ đã mất sản phẩm từ trước. Các bản sửa mới 11/12 bổ sung bảo vệ pending/commit và token giữ kho ngoài những trường hợp đã sửa ở mục 2/4.
+Lỗi **5, 9, 14–18 và 20** cùng các khoảng trống nghiệp vụ bên dưới vẫn cần xử lý. Lưu trữ SKU ngăn phát sinh mới dòng mất sản phẩm do DELETE, nhưng chưa sửa cách trả các dòng giỏ đã mất sản phẩm từ trước. Các bản sửa mới 11/12 bổ sung bảo vệ pending/commit và token giữ kho ngoài những trường hợp đã sửa ở mục 2/4. Quy trình hoàn hàng giao thất bại dùng dấu ghi nhận riêng, không sửa nhánh bù voucher của hủy thông thường ở lỗi 14.
 
 ## 1. P1 — Đã sửa: đơn khác màu/size khách đã xác nhận dù tổng tiền đúng
 
@@ -247,13 +246,13 @@ Thêm giỏ A đang chờ → khách chuyển sang chi tiết B, B tải xong �
 
 Script: `.tmp/business-review/frontend-product-route-repro.cjs`. Hướng sửa: gắn mutation và mọi refetch sau mutation với route/id đang hoạt động; bỏ callback từ route cũ. Nếu dùng remount theo key, vẫn cần ngăn callback sau unmount phát sinh cập nhật không còn phù hợp.
 
-### 19. P3 — Phản hồi danh sách cũ ghi đè đơn vừa hủy
+### 19. P3 — Đã sửa: phản hồi danh sách cũ ghi đè đơn vừa hủy
 
 Nguồn: `frontend/src/pages/MyOrders.jsx:15`, `:24`, `:29`, `:49`.
 
-Đã tái hiện trong cùng tài khoản: hủy đơn đang chờ; cập nhật hồ sơ trả về làm đối tượng user đổi và effect mở request tải danh sách; hủy thành công trả Đã hủy/hoàn tiền pending; snapshot danh sách cũ đến sau ghi đè thành Đang xử lý. Thông báo chờ hoàn tiền biến mất dù server đã hủy đơn.
+Trước sửa: hủy đơn đang chờ; cập nhật hồ sơ trả về làm đối tượng user đổi và effect mở request tải danh sách; hủy thành công trả Đã hủy/hoàn tiền pending; snapshot danh sách cũ đến sau ghi đè thành Đang xử lý. Thông báo chờ hoàn tiền biến mất dù server đã hủy đơn.
 
-Script: `.tmp/business-review/frontend-orders-refresh-repro.cjs`. Hướng sửa: làm mất hiệu lực các request danh sách mở trước mutation, hoặc tải lại sau khi hủy và chỉ nhận snapshot thuộc lần tải hiện hành. Không kết luận lỗi truy cập dữ liệu giữa hai tài khoản từ ca này.
+Hiện tại: MyOrders gắn lần tải với ID tài khoản và thế hệ request, làm mất hiệu lực GET trước mutation; callback hủy chỉ cập nhật khi tài khoản/thao tác còn hiện hành. Effect theo ID tài khoản, không tải lại chỉ vì object hồ sơ đổi. AdminOrders cũng bỏ GET cũ sau thao tác giao thất bại/hoàn hàng. Hồi quy `frontend/tests/delivery-return.test.cjs` kiểm tra danh sách cũ sau hủy, đổi tài khoản và phản hồi cũ sau giao thất bại. Script `.tmp/business-review/frontend-orders-refresh-repro.cjs` là bằng chứng lịch sử trước sửa.
 
 ### 20. P3 — Nhãn xếp hạng khách hàng không đúng tiêu chí API
 
@@ -279,11 +278,33 @@ Sau sửa 11–13, bộ hồi quy chính yêu cầu hành vi đúng: `checkoutPu
 
 Đã thêm 5 ca MongoDB/HTTP thật trong `backend/integration/p1Flows.integration.test.js`, có pause/fault injection nhưng các ghi thành công vẫn vào database thử nghiệm. Lần chạy ngày **15/10/2026** dừng ở bước kết nối với **DNS ETIMEOUT**, trước khi tạo fixture; không tính là đạt và không sửa dữ liệu cửa hàng. Log: `.tmp/business-review/p1-integration-result-2026-10-15.log`. Cần chạy lại khi DNS/kết nối MongoDB hoạt động. Chưa kiểm tra trình duyệt thật.
 
+## Đã bổ sung: giao thất bại / từ chối nhận COD
+
+Quy tắc người dùng chốt ngày 15/10/2026:
+
+- Đơn đã thanh toán: hoàn phần tiền hàng sau giảm giá, giữ đúng phí giao đã thu; cửa hàng chịu phí chuyển hoàn. Công thức `refundAmount = totalPrice - shippingPrice`; voucher miễn ship thì không giữ phí giao chưa thu. COD chưa thanh toán có tiền hoàn và phí giữ lại bằng 0.
+- Kiểm tra từng dòng màu/size: số đôi bán lại được, hỏng và thất lạc phải cộng đúng số đã gửi. Chỉ hàng bán lại được nhập kho; hàng hỏng/thất lạc không cộng kho và không tự trừ vào tiền hoàn.
+- Trả lại lượt voucher đúng một lần khi hoàn tất xử lý hàng quay về.
+
+Luồng: **Đang giao → Giao thất bại → Đã xử lý hoàn hàng**. Hai bước cuối dùng endpoint riêng, không chuyển bằng dropdown trạng thái thông thường. Admin vào **Quản trị → Đơn hàng → Báo giao thất bại / từ chối nhận**, nhập lý do; sau khi nhận và kiểm hàng thực tế, chọn **Xác nhận hàng quay về và kiểm hàng**, nhập số lượng và chi phí rồi xác nhận. Báo thất bại không giao thành công, không thu COD, không cộng kho hoặc trả voucher ngay. Tiền hoàn được chốt sau xử lý; admin chỉ thấy nút **Xác nhận đã hoàn tiền** khi đã xử lý xong, đơn đã trả tiền và khoản hoàn lớn hơn 0. Nút ghi nhận khoản hoàn đã thực hiện bên ngoài hệ thống.
+
+Kết quả kiểm hàng và chi phí được ghi thành snapshot trước các cập nhật kho/voucher. Dấu ghi nhận nguyên tử trên từng Product/Voucher bảo vệ thử lại, xác nhận đồng thời và trường hợp ghi thành công nhưng mất phản hồi. Khi lỗi giữa chừng, không đảo ngược lượng hàng đã nhập lại; đơn giữ trạng thái xử lý để tiếp tục đúng snapshot. Voucher có hold chặn xóa trong khoảng trả lượt đến chốt đơn. Dấu ghi nhận được giữ, không tự hết hạn; các token/hash không trả qua API. Đơn cũ không cần seed/reset.
+
+Đơn giao thất bại/đã xử lý hoàn hàng bị loại khỏi doanh số, top sản phẩm và tổng chi tiêu mua giày. Phí giao giữ lại và phí chuyển hoàn ghi riêng trong đơn, chưa có báo cáo kế toán dòng tiền tổng hợp. Khách xem tiến độ, lý do và khoản hoàn ở **Đơn hàng**; API khách không trả chi phí cửa hàng, ghi chú nội bộ hay ID người thao tác. Đơn hoàn hàng không dùng `stockRestored=true` để giả định mọi đôi đều đã trở lại kho bán và không bị xóa qua API xóa đơn hủy.
+
+Nguồn: `backend/controllers/deliveryController.js`, `backend/utils/deliveryReturn.js`, `backend/utils/orderPresentation.js`, `frontend/src/components/DeliveryReturnActions.jsx`, `frontend/src/components/AdminOrders.jsx`, `frontend/src/pages/MyOrders.jsx`.
+
+Hồi quy mới: `deliveryReturn.test.js` (28 ca), `deliveryOrderGuards.test.js` (8 ca), `deliveryReports.test.js` (16 ca) và `frontend/tests/delivery-return.test.cjs` (17 ca). Toàn bộ bộ ngoại tuyến **206 backend, 131 frontend đạt; build thành công**. Bộ MongoDB/HTTP riêng `backend/integration/deliveryReturn.integration.test.js` có 4 ca nghiệp vụ trong database thử nghiệm có dấu sở hữu; kết quả chạy thật ở đoạn dưới.
+
+Kiểm tra Chrome thật cho chức năng mới: **7/7 luồng đạt**, gồm báo thất bại COD, kiểm hàng, tiền hoàn BANK sau giảm giá/giữ phí giao, ghi nhận hoàn tiền, quyền xem của khách và form điện thoại 390px. Toàn bộ request ghi được chặn và trả bằng fixture trong trình duyệt thử, không gửi vào API/database cửa hàng; không có lỗi JavaScript hoặc tràn ngang sau khi chỉnh bố cục form. Bằng chứng: `.tmp/delivery-return-review/results.json` và ảnh cùng thư mục.
+
+Lần chạy MongoDB thật ngày 15/10/2026 dừng ở bước kết nối với **DNS ETIMEOUT**, trước khi tạo fixture. Không có ca nghiệp vụ MongoDB mới nào được tính là đạt và dữ liệu cửa hàng không thay đổi. Log: `.tmp/delivery-return-review/mongo-integration.log`. Cần chạy lại bộ tích hợp khi DNS/kết nối hoạt động; kiểm tra Chrome bằng fixture không thay thế kết quả MongoDB thật.
+
 ## Khoảng trống nghiệp vụ cần quyết định
 
 Các mục này cần chốt quy tắc trước khi bổ sung chức năng; không tự suy ra mọi chính sách còn thiếu là lỗi tính toán hiện tại.
 
-- **Giao thất bại/từ chối COD:** Đang giao chỉ chuyển được Đã giao; Đã giao lại tự ghi nhận trả tiền COD. Cần luồng giao thất bại, xác nhận hàng quay về và chất lượng hàng, xử lý phí và hoàn tiền. Không dùng Đã giao để đóng đơn chưa giao thành công.
+- **Giao lại sau thất bại:** đã có luồng nhận/kiểm hàng quay về ở trên. Chưa có tự động giao lại hoặc tích hợp đơn vị vận chuyển; bản này xử lý kết thúc đơn giao thất bại, không dùng Đã giao để đóng đơn chưa giao thành công.
 - **Hạn thanh toán BANK:** đơn giữ kho ngay nhưng chưa có hạn thanh toán/giải phóng tồn tự động. Cần chốt thời hạn, nhắc khách và xử lý tiền đến sau khi hết hạn; nếu không, đơn không được thanh toán có thể giữ hết tồn kho cho đến khi cửa hàng hủy thủ công. UI đã nói cửa hàng liên hệ cung cấp thông tin nhận tiền.
 - **Đổi size/trả hàng sau giao:** chưa có luồng. Cần điều kiện đổi/trả, kiểm tra chất lượng, chuyển kho giữa biến thể, chênh lệch tiền và hoàn tiền toàn phần/một phần. Hiện hủy trước giao và ghi nhận đã hoàn tiền chưa thay thế được quy trình này.
 - **Nhập/xuất/chỉnh tồn và giá vốn:** chỉ có số dư tồn kho, chưa có sổ biến động gắn người thực hiện, lý do, đơn/phiếu nhập. Cần quy tắc nhập thêm, kiểm kê, hàng hỏng, hàng trả lại và giá vốn nếu muốn báo cáo lợi nhuận; doanh thu hiện tại không phải lợi nhuận.
@@ -291,7 +312,7 @@ Các mục này cần chốt quy tắc trước khi bổ sung chức năng; khô
 - **Vai trò nhân viên:** backend có Staff nhưng frontend chỉ dùng Customer; chưa có đăng nhập/hồ sơ/tác vụ riêng cho Staff, chưa phân quyền chi tiết bán hàng/kho/thu tiền/quản trị. Chuỗi `role` hiện chưa tạo ra các quyền nghiệp vụ tương ứng.
 - **Lịch sử thao tác và chứng từ:** chưa có lịch sử người xác nhận thu/hoàn tiền, sửa giá/tồn/quyền cùng giá trị trước/sau. API vẫn cho xóa vật lý đơn đã hủy và hoàn tiền; cần chốt lưu trữ lịch sử/nhật ký riêng trước khi xóa để còn đối soát.
 - **Định nghĩa báo cáo:** cần thống nhất đơn trả tiền trước nhưng chưa giao, tiền hàng/ship/voucher, đơn đã hủy đang chờ hoàn tiền và chi tiêu khách hàng. Chưa có báo cáo riêng tiền đã thu/đã hoàn/đang chờ hoàn hoặc giá vốn/lợi nhuận. Sai nhãn xếp hạng đã tách thành lỗi 20.
-- **Vận chuyển:** phí hiện cố định 30.000đ, địa chỉ nhập tự do, chưa có mã vận đơn/theo dõi vận chuyển. Cần quyết định vùng phục vụ, phí cố định hay theo khu vực, và cách cập nhật giao lại/giao thất bại.
+- **Vận chuyển:** phí hiện cố định 30.000đ, địa chỉ nhập tự do, chưa có mã vận đơn/theo dõi vận chuyển. Đã có ghi nhận giao thất bại thủ công; cần quyết định vùng phục vụ, phí theo khu vực, tích hợp hãng vận chuyển và giao lại.
 - **Chính sách voucher nâng cao:** hiện hạn mức dùng chung toàn mã. Nếu cần mỗi khách chỉ dùng một số lần, mã cho khách mới/sản phẩm/danh mục cụ thể hoặc chống giữ lượt bằng đơn chưa thanh toán, phải định nghĩa thêm; chưa có quy tắc này trong schema/controller hiện tại.
 
 ## Các quy tắc đã được kiểm tra trong phạm vi rà soát
@@ -308,8 +329,8 @@ Các mục này cần chốt quy tắc trước khi bổ sung chức năng; khô
 
 1. Chạy lại các ca tích hợp mới cho **11–13** khi kết nối MongoDB hoạt động và kiểm tra phiên/route trên trình duyệt thật; bản sửa và hồi quy ngoại tuyến đã đạt.
 2. Tiếp tục **14–18**, đồng thời xử lý **5 và 9**: reservation voucher, giữ giờ/phiên bản khi sửa voucher, phiên bản API kho cũ, route chi tiết, giỏ mất dòng và limiter theo topology proxy thực tế.
-3. Xử lý **19–20**: phản hồi danh sách đơn và nhãn báo cáo.
-4. Chốt giao thất bại/đổi trả/hạn BANK, vai trò nhân viên, lịch sử tồn/tiền và công cụ đối soát.
+3. Xử lý **20**: nhãn báo cáo. Mục 19 đã được sửa cùng luồng giao thất bại/hoàn hàng.
+4. Chốt đổi/trả sau giao, giao lại, hạn BANK, vai trò nhân viên, lịch sử tồn/tiền và công cụ đối soát. Giao thất bại/kiểm hàng quay về đã triển khai theo chính sách ở trên.
 
 Các yêu cầu cho 11–13 đã có hồi quy: checkout không nhận thanh toán/hủy khi còn pending, không xóa đơn đã commit hoặc hoàn kho lần hai; SKU/biến thể đang giữ kho được bảo vệ; hồ sơ A không thay phiên B. Với các lỗi còn lại, tiếp tục bổ sung kiểm tra lượt voucher khớp đơn thực tế, sửa mô tả giữ nguyên lịch/giá trị khuyến mãi và giày hiển thị trùng ID đưa vào giỏ.
 

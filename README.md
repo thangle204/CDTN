@@ -72,7 +72,24 @@ Sản phẩm đã có biến thể cũng chỉ gửi lại `variants` khi các d
 - Đơn đã thanh toán bị hủy được đánh dấu chờ hoàn tiền. Nếu trạng thái thanh toán đổi trong lúc yêu cầu hủy đang xử lý, API trả 409 trước khi hoàn kho để đọc và xử lý lại theo trạng thái mới. Quản trị chỉ xác nhận hoàn tiền sau khi đã thực hiện bên ngoài hệ thống; website chưa tự chuyển hoặc hoàn tiền qua cổng thanh toán.
 - Chỉ quản trị được xóa đơn đã hủy và hoàn kho, đồng thời đã hoàn tiền nếu trước đó đã thanh toán. DELETE sản phẩm thực hiện lưu trữ (`isArchived`, `isHidden`), giữ nguyên SKU và tồn kho để hoàn hàng/hủy đơn. Sản phẩm lưu trữ không xuất hiện trong catalog thường, không sửa hoặc bật bán lại bằng API thông thường. Dùng chức năng ẩn/hiện cho sản phẩm chỉ tạm ngừng bán.
 - Đánh giá yêu cầu đơn đã thanh toán và giao thành công; mỗi khách đánh giá một lần cho mỗi sản phẩm.
-- Doanh thu tính các đơn đã thanh toán, chưa hủy; thời gian thống kê theo Việt Nam.
+- Doanh thu bán hàng tính các đơn đã thanh toán, loại đơn đã hủy, giao thất bại và đã xử lý hoàn hàng; thời gian thống kê theo Việt Nam. Phí giao giữ lại và chi phí chuyển hoàn được ghi riêng ở chi tiết đơn, không tính là doanh số bán giày.
+
+## Giao thất bại / khách từ chối nhận
+
+Chức năng áp dụng cho đơn **Đang giao** chưa giao thành công. Đây là xử lý hàng vận chuyển quay về; luồng đổi size hoặc khách trả hàng sau khi đã nhận vẫn chưa được bổ sung.
+
+1. Vào **Quản trị → Đơn hàng**, chọn đơn đang giao và bấm **Báo giao thất bại / từ chối nhận**. Nhập lý do và ghi chú rồi xác nhận. Đơn chuyển thành **Giao thất bại**, chờ hàng quay về; chưa cộng kho, chưa trả lượt voucher và không tự ghi nhận thanh toán COD.
+2. Khi đã nhận lại và kiểm hàng thực tế, bấm **Xác nhận hàng quay về và kiểm hàng**. Với từng dòng màu/size, nhập số đôi **tốt nhập lại kho**, **hỏng không nhập kho**, **thất lạc/không nhận lại**. Tổng ba số phải bằng số đã gửi; phải nhập rõ cả số 0. Nhập phí vận chuyển hàng quay về cửa hàng chịu và ghi chú kiểm hàng.
+3. Kiểm tra phần tiền hoàn rồi bấm **Xác nhận đã kiểm hàng và xử lý**. Chỉ số đôi tốt được cộng về đúng SKU/màu/size; hàng hỏng hoặc thất lạc không tăng kho bán. Lượt voucher được trả lại một lần. Đơn chuyển thành **Đã xử lý hoàn hàng**.
+4. Với đơn đã thanh toán và có tiền hoàn, cửa hàng hoàn tiền bên ngoài hệ thống rồi bấm **Xác nhận đã hoàn tiền**. Nút chỉ xuất hiện sau khi xử lý hàng quay về hoàn tất; website chỉ ghi nhận, không tự chuyển tiền.
+
+Quy tắc đã chốt: **tiền hoàn = tổng tiền đã trả − phí giao thực tế đã thu**. Đây là phần tiền hàng sau giảm giá; không trừ thêm phí chuyển hoàn hay số hàng hỏng/thất lạc. Ví dụ khách đã trả 780.000₫, trong đó ship 30.000₫, sẽ nhận lại 750.000₫; cửa hàng giữ 30.000₫ và chịu phí hàng quay về. Nếu voucher miễn ship thì phí đã thu bằng 0, không giữ lại khoản ship giả định. COD chưa thu tiền có tiền hoàn và phí giao giữ lại bằng 0.
+
+Khách vào **Đơn hàng** để xem lý do, tiến độ, kết quả kiểm hàng và tiền hoàn/phí giao đã giữ lại. Chi phí của cửa hàng, ghi chú nội bộ và người thao tác chỉ được trả cho admin. Đơn giao thất bại không được chuyển thành Đã giao, hủy hoặc thay thanh toán qua các nút thông thường; bản ghi hoàn hàng được giữ để đối soát.
+
+Kết quả kiểm hàng được chốt trước khi ghi kho/voucher. Nếu xử lý gián đoạn, giao diện khóa dữ liệu đã lưu và cho **Tiếp tục xử lý kết quả đã chốt**. Mỗi lần cộng kho/trả voucher có dấu ghi nhận nguyên tử trong cùng document, nên thử lại hoặc xác nhận đồng thời không cộng/trả hai lần; không đảo ngược lượng hàng đã nhập lại kho. Voucher đang hoàn tất được bảo vệ khỏi xóa cho đến khi đơn chốt xong. Các dấu ghi nhận không tự hết hạn và không công khai qua API. Không sửa trực tiếp snapshot hoặc xóa các dấu này để thử lại.
+
+Kiểm tra ngoại tuyến sau bổ sung ngày 15/10/2026: **206 backend, 131 frontend đạt; build thành công**. Bộ tích hợp riêng: `node --test backend/integration/deliveryReturn.integration.test.js`, tạo database thử nghiệm có dấu sở hữu theo runner hiện có, không seed/reset dữ liệu cửa hàng. Kết quả MongoDB/trình duyệt mới nhất được ghi trong BUSINESS_REVIEW.md.
 
 Checkout dùng khóa giỏ và cập nhật tồn có điều kiện, đồng thời bù thay đổi khi thao tác thất bại để chạy được trên MongoDB standalone. Bản này chưa cung cấp giao dịch nhiều collection với khả năng phục hồi tự động sau sự cố tiến trình/database; nên dùng MongoDB replica set cùng giao dịch và cơ chế phục hồi bền vững trước khi mở bán quy mô lớn.
 

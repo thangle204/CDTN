@@ -193,15 +193,15 @@ const AdminOrders = () => {
           </p>
         </div>
 
-        <div className="flex gap-3">
-          <div className="relative">
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+          <div className="relative min-w-0 w-full sm:w-auto">
             <FaSearch className="absolute left-3 top-3 text-gray-400" />
             <input
               type="text"
               placeholder="Tìm mã đơn hàng..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 border-2 border-gray-300 rounded-md text-sm focus:outline-none focus:border-blue-500 w-64"
+              className="pl-10 pr-4 py-2 border-2 border-gray-300 rounded-md text-sm focus:outline-none focus:border-blue-500 w-full sm:w-64"
             />
             {searchTerm && (
               <button
@@ -217,7 +217,7 @@ const AdminOrders = () => {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="border-2 border-gray-300 rounded-md px-4 py-2 text-sm focus:outline-none focus:border-blue-500"
+            className="w-full min-w-0 sm:w-auto border-2 border-gray-300 rounded-md px-4 py-2 text-sm focus:outline-none focus:border-blue-500"
           >
             <option value="all">Tất cả trạng thái</option>
             <option value="Đang xử lý">Đang xử lý</option>
@@ -363,7 +363,7 @@ const AdminOrders = () => {
               </div>
 
               <div className="mt-4 p-4 bg-yellow-50 rounded-lg border-2 border-yellow-200">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm text-gray-700">
                       <strong>Thanh toán:</strong> {order.paymentMethod === 'COD' ? 'Thanh toán khi nhận hàng (COD)' : order.paymentMethod === 'BANK' ? 'Chuyển khoản ngân hàng' : order.paymentMethod}

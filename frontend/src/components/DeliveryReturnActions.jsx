@@ -107,7 +107,7 @@ const DeliveryReturnActions = ({ order, busy = false, onMarkFailed, onSettleRetu
       </> : <>
         <h4 className="font-semibold">{frozen ? 'Tiếp tục kết quả kiểm hàng đã ghi nhận' : 'Kiểm tra hàng quay về'}</h4>
         {frozen && <p role="status" className="text-orange-900">Dữ liệu đã được chốt để xử lý. Không thay đổi số lượng hoặc chi phí khi tiếp tục.{order.deliveryReturn.recoveryRequired && ' Đơn cần tiếp tục đối soát.'}</p>}
-        {(order.orderItems || []).map((item, itemIndex) => <fieldset key={item._id || itemIndex} disabled={locked || frozen} className="rounded border p-3">
+        {(order.orderItems || []).map((item, itemIndex) => <fieldset key={item._id || itemIndex} disabled={locked || frozen} className="min-w-0 rounded border p-3">
           <legend className="px-1 font-medium">{itemLabel(item)} — Đã giao đi: {item.quantity}</legend>
           <div className="grid gap-3 sm:grid-cols-3">{[['restockQuantity', 'Hàng tốt nhập lại kho'], ['damagedQuantity', 'Hàng hỏng không nhập kho'], ['missingQuantity', 'Thất lạc / không nhận lại']].map(([field, label]) => <label key={field} className="block">{label} *<input type="number" min="0" max={item.quantity} step="1" required value={currentInspection?.[itemIndex]?.[field] ?? ''} onChange={event => setLine(itemIndex, field, event.target.value)} aria-label={`${label} — dòng ${itemIndex + 1}`} className="mt-1 w-full rounded border p-2" /></label>)}</div>
         </fieldset>)}

@@ -22,3 +22,7 @@ Không tự tạo giá gốc, phần trăm giảm giá, số đánh giá hoặc 
 Kiểm tra ngày 15/10/2026: 114 kiểm tra frontend đạt, build thành công. Chrome thật đạt 12 luồng catalog ở 1440px/390px bằng dữ liệu GET mẫu chỉ trong phiên kiểm tra; không ghi dữ liệu MongoDB. Ảnh và kết quả ở `.tmp/storefront-review/` tại thư mục gốc. Đây là kiểm tra giao diện, không thay cho kiểm tra checkout/thanh toán trên MongoDB thật.
 
 Xem README.md ở gốc để cấu hình MongoDB/SMTP, kiểm tra backend và dùng dữ liệu mẫu.
+
+Chức năng **Quản trị → Đơn hàng** đã có báo giao thất bại/từ chối nhận ở đơn Đang giao, rồi xác nhận hàng quay về với số lượng tốt/hỏng/thất lạc của từng dòng màu/size. Chỉ hàng tốt cộng kho; cửa hàng giữ phí giao đã thu, chịu phí chuyển hoàn và hoàn phần tiền hàng thực trả sau giảm giá. COD chưa thu tiền không có khoản hoàn. Sau khi xử lý hoàn tất, admin ghi nhận khoản tiền đã hoàn bên ngoài hệ thống. Khách theo dõi tại **Đơn hàng**; không thấy ghi chú nội bộ hoặc chi phí của cửa hàng.
+
+Đã thêm kiểm tra giao thất bại, dữ liệu kiểm hàng, khóa thử lại, quyền xem và chống phản hồi danh sách cũ ghi đè trạng thái. Toàn bộ frontend sau bổ sung: **131 kiểm tra đạt; build thành công**. Đây là chức năng hàng giao thất bại quay về, chưa phải khách yêu cầu trả hàng sau khi đã nhận thành công.

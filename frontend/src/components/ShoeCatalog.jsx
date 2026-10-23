@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { FaArrowRight, FaChevronLeft, FaChevronRight, FaSearch, FaSlidersH, FaStar, FaTimes, FaThLarge, FaShoePrints } from 'react-icons/fa';
+import { FaArrowRight, FaChevronLeft, FaChevronRight, FaSearch, FaSlidersH, FaStar, FaTimes, FaThLarge, FaShoePrints, FaCreditCard, FaBoxOpen } from 'react-icons/fa';
 import { productsAPI } from '../utils/api';
 import { productImageUrl } from '../utils/productVariants';
 import { filterCatalogProducts, buildCatalogFacets, validateCatalogPriceRange, normalizeCatalogText } from '../utils/catalogFilters';
-import StoreFooter from './StoreFooter';
 import './shoe-catalog.css';
 
 const CATEGORIES = ['Sneaker', 'Giày chạy bộ', 'Giày da', 'Sandal', 'Giày thể thao'];
@@ -75,7 +74,7 @@ function FacetSection({ title, options, selected, onToggle, searchable = false }
   );
 }
 
-export default function ShoeCatalog() {
+export default function ShoeCatalog({ showIntro = false } = {}) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -208,12 +207,22 @@ export default function ShoeCatalog() {
     catalogHeading.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
   const priceRange = validateCatalogPriceRange(filters.minPrice, filters.maxPrice);
+  const featuredProduct = products.find(product => product.image && Number(product.countInStock) > 0);
   const pageNumbers = [...new Set([1, page - 1, page, page + 1, totalPages].filter(value => value >= 1 && value <= totalPages))].sort((a, b) => a - b);
 
   return (
     <div className="shoe-storefront">
-      <main className="catalog-shell">
+      <div className="catalog-shell">
         <nav className="catalog-breadcrumb" aria-label="Đường dẫn"><Link to="/">Trang chủ</Link><FaChevronRight aria-hidden="true" /><span aria-current="page">Giày</span></nav>
+        {showIntro && <section className="catalog-intro" aria-label="Khám phá SHOE STORE">
+          <div className="catalog-intro__copy"><p className="shop-eyebrow">PHONG CÁCH BẮT ĐẦU TỪ ĐÔI GIÀY</p><h2>Đi đúng gu.<br /><span>Bước tự tin.</span></h2><p>Từ những ngày xuống phố đến mỗi buổi tập.<br className="hidden sm:block" /> Chọn đôi giày đồng hành cùng chất riêng của bạn.</p><a className="catalog-intro__cta" href="#catalog-results">Tìm đôi giày của bạn <FaArrowRight aria-hidden="true" /></a></div>
+          {featuredProduct ? <Link to={`/products/${featuredProduct._id}`} className="catalog-feature" aria-label={`Khám phá ${featuredProduct.name}`}>
+            <span className="catalog-feature__tag">KHÁM PHÁ PHONG CÁCH MỖI NGÀY</span>
+            <img src={productImageUrl(featuredProduct.image)} alt={featuredProduct.name} decoding="async" onError={onImageError} />
+            <span className="catalog-feature__caption"><span><small>{featuredProduct.brand}</small><strong>{featuredProduct.name}</strong></span><span className="catalog-feature__price">{money(featuredProduct.price)}</span></span>
+            <span className="catalog-feature__arrow" aria-hidden="true"><FaArrowRight /></span>
+          </Link> : <div className="catalog-intro__detail" aria-hidden="true"><FaShoePrints /><span>MỘT ĐÔI GIÀY.<br /><strong>NHIỀU CHẤT RIÊNG.</strong></span></div>}
+        </section>}
         {demoMode && <p className="catalog-demo-notice" role="status">Bạn đang xem sản phẩm mẫu. Việc mua hàng cần kết nối cơ sở dữ liệu của cửa hàng.</p>}
         <div className="catalog-layout">
           {filtersOpen && <button className="catalog-filter-backdrop" onClick={() => setFiltersOpen(false)} aria-label="Đóng nền bộ lọc" tabIndex={-1} />}
@@ -246,7 +255,7 @@ export default function ShoeCatalog() {
             <button type="button" className="catalog-mobile-results" onClick={() => setFiltersOpen(false)}>Xem {visibleProducts.length} sản phẩm <FaArrowRight aria-hidden="true" /></button>
           </aside>
           <div className="catalog-content">
-            <div className="catalog-heading" ref={catalogHeading}>
+            <div className="catalog-heading" ref={catalogHeading} id="catalog-results">
               <div><h1>{filters.category || 'Bộ sưu tập giày'}</h1><p>{loading ? 'Đang tải bộ sưu tập…' : `${visibleProducts.length.toLocaleString('vi-VN')} mẫu giày${filters.keyword ? ` cho “${filters.keyword}”` : ' cho phong cách của bạn'}`}</p></div>
               <div className="catalog-sort"><span aria-hidden="true">↕</span><label className="sr-only" htmlFor="catalog-sort">Sắp xếp sản phẩm</label><select id="catalog-sort" aria-label="Sắp xếp sản phẩm" value={filters.sort} onChange={event => changeParam('sort', event.target.value)}>{SORT_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
             </div>
@@ -269,8 +278,12 @@ export default function ShoeCatalog() {
             </div>}
           </div>
         </div>
-      </main>
-      <StoreFooter />
+        {showIntro && <section className="shop-perks" aria-label="Mua sắm cùng SHOE STORE">
+          <div><FaShoePrints aria-hidden="true" /><div><h2>Đôi giày hợp với bạn</h2><p>Chọn màu sắc và size theo từng mẫu giày.</p></div></div>
+          <div><FaCreditCard aria-hidden="true" /><div><h2>Thanh toán linh hoạt</h2><p>Thanh toán khi nhận hàng hoặc VNPAY Sandbox.</p></div></div>
+          <div><FaBoxOpen aria-hidden="true" /><div><h2>Theo dõi đơn dễ dàng</h2><p>Xem tiến độ đơn hàng trong tài khoản của bạn.</p></div></div>
+        </section>}
+      </div>
     </div>
   );
 }

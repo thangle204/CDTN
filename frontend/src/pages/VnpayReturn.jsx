@@ -147,7 +147,7 @@ const VnpayReturn = () => {
   const presentation = verified && presentations[verified.status];
   return (
     <div className="container mx-auto max-w-2xl px-4 py-16">
-      <section className="rounded-xl bg-white p-6 text-center shadow sm:p-8">
+      <section className="rounded-xl bg-white p-6 text-center shadow sm:p-8 shop-panel">
         <p className="mb-4 font-semibold text-blue-700">VNPAY Sandbox · Thanh toán thử nghiệm</p>
         <h1 className={`mb-4 text-3xl font-bold ${presentation?.color || 'text-gray-800'}`}>{loading && !verified ? 'Đang kiểm tra thanh toán...' : presentation?.title || 'Chưa xác minh được thanh toán'}</h1>
         {error && <p role="alert" className="mb-4 rounded-lg bg-red-50 p-4 text-red-700">{error}</p>}
@@ -161,8 +161,8 @@ const VnpayReturn = () => {
           {verified.status === 'failed' && <p className="mb-4 text-gray-600">Bạn có thể mở lại thanh toán từ Đơn hàng của tôi nếu đơn vẫn còn hiệu lực.</p>}
         </>}
         <div className="flex flex-wrap justify-center gap-3">
-          <button type="button" disabled={loading || reconciling} onClick={refresh} className="rounded-lg border border-blue-700 px-5 py-3 font-semibold text-blue-700 disabled:opacity-50">{loading ? 'Đang kiểm tra...' : 'Kiểm tra lại kết quả'}</button>
-          {verified?.status === 'pending' && typeof verified.orderId === 'string' && user && !authLoading && <button type="button" disabled={loading || reconciling} onClick={reconcile} className="rounded-lg border border-blue-700 px-5 py-3 font-semibold text-blue-700 disabled:opacity-50">{reconciling ? 'Đang đối chiếu...' : 'Đối chiếu với VNPAY'}</button>}
+          <button type="button" disabled={loading || reconciling} onClick={refresh} className="rounded-lg border border-red-700 px-5 py-3 font-semibold text-red-700 disabled:opacity-50">{loading ? 'Đang kiểm tra...' : 'Kiểm tra lại kết quả'}</button>
+          {verified?.status === 'pending' && typeof verified.orderId === 'string' && user && !authLoading && <button type="button" disabled={loading || reconciling} onClick={reconcile} className="rounded-lg border border-red-700 px-5 py-3 font-semibold text-red-700 disabled:opacity-50">{reconciling ? 'Đang đối chiếu...' : 'Đối chiếu với VNPAY'}</button>}
           <Link to="/my-orders" className="rounded-lg bg-red-600 px-5 py-3 font-semibold text-white">Đơn hàng của tôi</Link>
         </div>
       </section>

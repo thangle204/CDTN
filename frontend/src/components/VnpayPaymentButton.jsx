@@ -64,7 +64,7 @@ const VnpayPaymentButton = ({ order, onOrderUpdated, disabled = false }) => {
       {message && <p role="status" className="rounded-lg bg-blue-50 p-3 text-blue-800">{message}</p>}
       <div className="flex flex-wrap gap-3">
         <button type="button" disabled={disabled || busy} onClick={() => run()} className="rounded-lg bg-blue-700 px-5 py-3 font-semibold text-white disabled:opacity-50">{busy ? 'Đang xử lý VNPAY...' : 'Thanh toán VNPAY'}</button>
-        <button type="button" disabled={disabled || busy} onClick={() => run(true)} className="rounded-lg border border-blue-700 px-4 py-3 font-semibold text-blue-700 disabled:opacity-50">Đối chiếu với VNPAY</button>
+        <button type="button" disabled={disabled || busy} onClick={() => run(true)} className="rounded-lg border border-red-700 px-4 py-3 font-semibold text-red-700 disabled:opacity-50">Đối chiếu với VNPAY</button>
       </div>
     </div>
   );

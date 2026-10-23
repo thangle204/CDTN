@@ -257,7 +257,7 @@ const AdminOrders = () => {
               placeholder="Tìm mã đơn hàng..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 border-2 border-gray-300 rounded-md text-sm focus:outline-none focus:border-blue-500 w-full sm:w-64"
+              className="pl-10 pr-4 py-2 border-2 border-gray-300 rounded-md text-sm focus:outline-none focus:border-red-500 w-full sm:w-64"
             />
             {searchTerm && (
               <button
@@ -273,7 +273,7 @@ const AdminOrders = () => {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="w-full min-w-0 sm:w-auto border-2 border-gray-300 rounded-md px-4 py-2 text-sm focus:outline-none focus:border-blue-500"
+            className="w-full min-w-0 sm:w-auto border-2 border-gray-300 rounded-md px-4 py-2 text-sm focus:outline-none focus:border-red-500"
           >
             <option value="all">Tất cả trạng thái</option>
             <option value="Đang xử lý">Đang xử lý</option>
@@ -296,7 +296,7 @@ const AdminOrders = () => {
           </p>
           <button
             onClick={() => setSearchTerm('')}
-            className="text-blue-600 hover:text-blue-800 text-sm font-semibold"
+            className="text-red-600 hover:text-red-800 text-sm font-semibold"
           >
             Xóa tìm kiếm
           </button>
@@ -306,7 +306,7 @@ const AdminOrders = () => {
       {/* DANH SÁCH ĐƠN HÀNG */}
       <div className="space-y-4">
         {filteredOrders.map((order) => (
-          <div key={order._id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+          <div key={order._id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow shop-panel">
             <div className="border-b border-gray-200 p-4 sm:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
@@ -336,7 +336,7 @@ const AdminOrders = () => {
                       <button
                         onClick={() => handleUpdateStatus(order._id, newStatus)}
                         disabled={!newStatus || actionId !== null}
-                        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-semibold"
+                        className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50 text-sm font-semibold"
                       >
                         Lưu
                       </button>
@@ -362,7 +362,7 @@ const AdminOrders = () => {
                           setNewStatus('');
                         }}
                         disabled={actionId !== null}
-                        className="text-blue-600 hover:text-blue-800 p-2"
+                        className="text-red-600 hover:text-red-800 p-2"
                         title="Cập nhật trạng thái"
                       >
                         <FaEdit className="text-xl" />
@@ -382,17 +382,17 @@ const AdminOrders = () => {
                       {item.name}{item.color ? ` · Màu ${item.color}` : ''}{item.size != null ? ` · Size ${item.size}` : ''} x {item.quantity}
                     </span>
                     <span className="font-medium text-gray-900">
-                      {(item.price * item.quantity).toLocaleString()} ₫
+                      {(item.price * item.quantity).toLocaleString('vi-VN')} ₫
                     </span>
                   </div>
                 ))}
-                {order.itemsPrice != null && <div className="flex justify-between text-sm"><span>Tiền giày:</span><span>{order.itemsPrice.toLocaleString()} ₫</span></div>}
-                {order.shippingPrice != null && <div className="flex justify-between text-sm"><span>Phí vận chuyển:</span><span>{order.shippingPrice.toLocaleString()} ₫</span></div>}
-                {order.discountAmount > 0 && <div className="flex justify-between text-sm text-green-700"><span>Giảm giá{order.voucherCode ? ` (${order.voucherCode})` : ''}:</span><span>-{order.discountAmount.toLocaleString()} ₫</span></div>}
+                {order.itemsPrice != null && <div className="flex justify-between text-sm"><span>Tiền giày:</span><span>{order.itemsPrice.toLocaleString('vi-VN')} ₫</span></div>}
+                {order.shippingPrice != null && <div className="flex justify-between text-sm"><span>Phí vận chuyển:</span><span>{order.shippingPrice.toLocaleString('vi-VN')} ₫</span></div>}
+                {order.discountAmount > 0 && <div className="flex justify-between text-sm text-green-700"><span>Giảm giá{order.voucherCode ? ` (${order.voucherCode})` : ''}:</span><span>-{order.discountAmount.toLocaleString('vi-VN')} ₫</span></div>}
                 {order.voucherCode && !order.discountAmount && <p className="text-xs text-green-700">Voucher: {order.voucherCode}</p>}
                 <div className="border-t mt-2 pt-2 flex justify-between font-bold">
                   <span>Tổng:</span>
-                  <span className="text-red-600">{order.totalPrice.toLocaleString()} ₫</span>
+                  <span className="text-red-600">{order.totalPrice.toLocaleString('vi-VN')} ₫</span>
                 </div>
               </div>
 
@@ -453,7 +453,7 @@ const AdminOrders = () => {
                         {reconciliationAttempts(order).map(payment => <option key={payment.txnRef} value={payment.txnRef}>{payment.txnRef}</option>)}
                       </select>
                     </label>}
-                    <button type="button" disabled={actionId !== null || reconciliationAttempts(order).length > 1 && !reconciliationAttempts(order).some(payment => payment.txnRef === reconcileReferences[order._id])} onClick={() => handleReconcileVnpay(order._id)} className="rounded-lg border border-blue-700 px-4 py-2 font-semibold text-blue-700 disabled:opacity-50">{actionId === order._id ? 'Đang đối chiếu...' : 'Đối chiếu với VNPAY'}</button>
+                    <button type="button" disabled={actionId !== null || reconciliationAttempts(order).length > 1 && !reconciliationAttempts(order).some(payment => payment.txnRef === reconcileReferences[order._id])} onClick={() => handleReconcileVnpay(order._id)} className="rounded-lg border border-red-700 px-4 py-2 font-semibold text-red-700 disabled:opacity-50">{actionId === order._id ? 'Đang đối chiếu...' : 'Đối chiếu với VNPAY'}</button>
                   </div>}
                   {reconcileMessage?.orderId === order._id && <p role="status" className="rounded bg-blue-50 p-3 text-blue-800">{reconcileMessage.text}</p>}
                   {order.paymentReviewRequired && <p role="alert" className="rounded bg-red-100 p-3 font-semibold text-red-800">Có nhiều giao dịch thành công. Cần đối soát và xử lý khoản thanh toán dư; chưa xác nhận hoàn tiền toàn bộ.</p>}
@@ -477,7 +477,7 @@ const AdminOrders = () => {
                     {order.refundedAt && <p className="text-xs text-gray-600">Ghi nhận lúc: {new Date(order.refundedAt).toLocaleString('vi-VN')}</p>}
                     {canConfirmOrderRefund(order) && <>
                       <p className="mt-1 text-xs text-gray-600">Hoàn tiền cho khách hàng trước, sau đó xác nhận tại đây. Hệ thống chỉ ghi nhận, không tự chuyển tiền.</p>
-                      <button type="button" onClick={() => handleConfirmRefund(order._id)} disabled={actionId !== null} className="mt-2 rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">Xác nhận đã hoàn tiền</button>
+                      <button type="button" onClick={() => handleConfirmRefund(order._id)} disabled={actionId !== null} className="mt-2 rounded bg-red-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">Xác nhận đã hoàn tiền</button>
                     </>}
                   </div>
                 )}
@@ -492,7 +492,7 @@ const AdminOrders = () => {
 
       {/* THÔNG BÁO KHI KHÔNG TÌM THẤY */}
       {filteredOrders.length === 0 && (
-        <div className="text-center py-12 bg-white rounded-lg shadow">
+        <div className="text-center py-12 bg-white rounded-lg shadow shop-panel">
           <p className="text-gray-600">
             {searchTerm 
               ? `Không tìm thấy đơn hàng với mã "${searchTerm}"` 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FaUser, FaLock, FaEnvelope, FaPhone } from 'react-icons/fa';
+import AuthLayout from '../components/AuthLayout';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -50,18 +51,15 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
+    <AuthLayout>
       <div className="max-w-md w-full">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2 text-3xl font-bold mb-2">
-            <span className="text-gray-800">SHOE</span>
-            <span className="text-red-600">STORE</span>
-          </Link>
-          <p className="text-gray-600">Tạo tài khoản mới</p>
+        <div className="mb-8">
+          <p className="shop-eyebrow">GIA NHẬP SHOE STORE</p>
+          <h1 className="shop-auth__title">Bắt đầu hành trình của bạn</h1>
+          <p className="text-sm text-gray-600">Tạo tài khoản để lưu giỏ hàng và theo dõi đơn mua.</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-8">
+        <div className="bg-white rounded-lg shadow-md p-8 shop-panel">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Đăng ký</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -72,12 +70,13 @@ const Register = () => {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Họ tên</label>
+              <label htmlFor="register-name" className="block text-sm font-medium text-gray-700 mb-2">Họ tên</label>
               <div className="relative">
                 <FaUser className="absolute left-3 top-3 text-gray-400" />
                 <input
                   type="text"
                   name="name"
+                  id="register-name"
                   autoComplete="name"
                   value={formData.name}
                   onChange={handleChange}
@@ -89,12 +88,13 @@ const Register = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+              <label htmlFor="register-email" className="block text-sm font-medium text-gray-700 mb-2">Email</label>
               <div className="relative">
                 <FaEnvelope className="absolute left-3 top-3 text-gray-400" />
                 <input
                   type="email"
                   name="email"
+                  id="register-email"
                   autoComplete="email"
                   value={formData.email}
                   onChange={handleChange}
@@ -106,12 +106,13 @@ const Register = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Số điện thoại</label>
+              <label htmlFor="register-phone" className="block text-sm font-medium text-gray-700 mb-2">Số điện thoại</label>
               <div className="relative">
                 <FaPhone className="absolute left-3 top-3 text-gray-400" />
                 <input
                   type="tel"
                   name="phone"
+                  id="register-phone"
                   autoComplete="tel"
                   value={formData.phone}
                   onChange={handleChange}
@@ -123,12 +124,13 @@ const Register = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Mật khẩu</label>
+              <label htmlFor="register-password" className="block text-sm font-medium text-gray-700 mb-2">Mật khẩu</label>
               <div className="relative">
                 <FaLock className="absolute left-3 top-3 text-gray-400" />
                 <input
                   type="password"
                   name="password"
+                  id="register-password"
                   autoComplete="new-password"
                   maxLength={72}
                   value={formData.password}
@@ -158,7 +160,7 @@ const Register = () => {
           </div>
         </div>
       </div>
-    </div>
+    </AuthLayout>
   );
 };
 

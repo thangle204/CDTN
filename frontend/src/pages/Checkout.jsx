@@ -158,7 +158,7 @@ const Checkout = () => {
 
   if (step === 3) return (
     <div className="container mx-auto px-4 py-16 max-w-2xl">
-      <div className="bg-white rounded-xl shadow p-8 text-center">
+      <div className="bg-white rounded-xl shadow p-8 text-center shop-panel">
         <FaCheckCircle className="text-6xl text-green-600 mx-auto mb-6" />
         <h1 className="text-3xl font-bold mb-3">Đặt giày thành công!</h1>
         <p className="text-gray-600 mb-6">Cảm ơn bạn đã mua sắm tại SHOE STORE.</p>
@@ -174,12 +174,12 @@ const Checkout = () => {
   );
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 shop-page">
       <Link to="/cart" className="text-red-600 hover:underline">← Quay lại giỏ hàng</Link>
       <h1 className="text-3xl font-bold my-6">Thanh toán</h1>
-      <ol className="flex gap-6 mb-8 text-sm font-semibold" aria-label="Tiến trình đặt hàng">
-        <li className={step === 1 ? 'text-red-600' : 'text-gray-500'}>1. Giao hàng và thanh toán</li>
-        <li className={step === 2 ? 'text-red-600' : 'text-gray-500'}>2. Xác nhận đặt giày</li>
+      <ol className="flex gap-6 mb-8 text-sm font-semibold shop-checkout-steps" aria-label="Tiến trình đặt hàng">
+        <li aria-current={step === 1 ? 'step' : undefined} className={step === 1 ? 'text-red-600' : 'text-gray-500'}>1. Giao hàng và thanh toán</li>
+        <li aria-current={step === 2 ? 'step' : undefined} className={step === 2 ? 'text-red-600' : 'text-gray-500'}>2. Xác nhận đặt giày</li>
       </ol>
       {error && <div role="alert" className="bg-red-50 text-red-700 border border-red-200 rounded-lg p-4 mb-6">{error}</div>}
       {!cartItems.length ? <Link to="/cart" className="text-red-600 underline">Quay lại giỏ hàng để tải lại sản phẩm</Link> : (
@@ -187,7 +187,7 @@ const Checkout = () => {
           <div className="lg:col-span-2">
             {step === 1 ? (
               <form onSubmit={proceed} className="space-y-6">
-                <section className="bg-white rounded-lg shadow p-6">
+                <section className="bg-white rounded-lg shadow p-6 shop-panel">
                   <h2 className="text-xl font-bold mb-5 flex items-center gap-2"><FaMapMarkerAlt className="text-red-600" />Thông tin nhận giày</h2>
                   <div className="grid md:grid-cols-2 gap-4">
                     {[['name', 'Họ tên người nhận', true], ['phone', 'Số điện thoại', true], ['address', 'Số nhà, tên đường', true], ['city', 'Tỉnh / Thành phố', true], ['district', 'Quận / Huyện'], ['ward', 'Phường / Xã']].map(([name, label, required]) => (
@@ -198,17 +198,17 @@ const Checkout = () => {
                   </div>
                   <label className="block mt-4 text-sm font-medium">Ghi chú giao hàng<textarea name="notes" maxLength={1000} rows={3} value={shippingInfo.notes} onChange={event => setShippingInfo({ ...shippingInfo, notes: event.target.value })} className={inputClass + ' mt-2'} /></label>
                 </section>
-                <section className="bg-white rounded-lg shadow p-6">
+                <section className="bg-white rounded-lg shadow p-6 shop-panel">
                   <h2 className="text-xl font-bold mb-5 flex items-center gap-2"><FaCreditCard className="text-red-600" />Phương thức thanh toán</h2>
                   {[['COD', 'Thanh toán khi nhận giày (COD)'], ['VNPAY', 'VNPAY Sandbox (QR / thẻ test)']].map(([value, label]) => (
-                    <label key={value} className="flex items-center gap-3 border rounded-lg p-4 mb-3 cursor-pointer"><input type="radio" name="paymentMethod" value={value} checked={paymentMethod === value} onChange={() => setPaymentMethod(value)} />{label}</label>
+                    <label key={value} className="flex items-center gap-3 border rounded-lg p-4 mb-3 cursor-pointer shop-payment-option"><input type="radio" name="paymentMethod" value={value} checked={paymentMethod === value} onChange={() => setPaymentMethod(value)} />{label}</label>
                   ))}
                   {paymentMethod === 'VNPAY' && <p className="rounded-lg bg-blue-50 p-4 text-blue-900">Sau khi đặt hàng, bạn sẽ được chuyển đến VNPAY Sandbox để chọn QR hoặc thẻ test. Đây là môi trường thử nghiệm; trạng thái thanh toán được cập nhật tự động từ VNPAY.</p>}
                 </section>
                 <button type="submit" disabled={applyingVoucher} className="w-full bg-red-600 text-white py-3 rounded-lg font-semibold disabled:opacity-50">Tiếp tục xác nhận</button>
               </form>
             ) : (
-              <section className="bg-white rounded-lg shadow p-6">
+              <section className="bg-white rounded-lg shadow p-6 shop-panel">
                 <h2 className="text-xl font-bold mb-5 flex items-center gap-2"><FaShoppingBag className="text-red-600" />Xác nhận đơn giày</h2>
                 <div className="bg-gray-50 p-4 rounded-lg mb-5 space-y-2"><p className="font-semibold">{shippingInfo.name} · {shippingInfo.phone}</p><p>{address}</p>{shippingInfo.notes && <p className="text-gray-600">Ghi chú: {shippingInfo.notes}</p>}<p className="text-sm">Thanh toán: {paymentMethod === 'COD' ? 'Khi nhận hàng' : 'VNPAY Sandbox (QR / thẻ test)'}</p></div>
                 <div className="divide-y">
@@ -225,7 +225,7 @@ const Checkout = () => {
             )}
           </div>
           <aside className="space-y-6">
-            <section className="bg-white rounded-lg shadow p-6">
+            <section className="bg-white rounded-lg shadow p-6 shop-panel">
               <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><FaTag className="text-red-600" />Ưu đãi</h2>
               <form onSubmit={event => { event.preventDefault(); applyVoucher(voucherCode); }} className="flex gap-2">
                 <input aria-label="Mã voucher" maxLength={50} placeholder="Nhập mã voucher" value={voucherCode} onChange={event => setVoucherCode(event.target.value)} className={inputClass} />
@@ -235,7 +235,7 @@ const Checkout = () => {
               {quote && <p className="flex items-center justify-between gap-2 bg-green-50 text-green-700 p-3 rounded-lg mt-3 text-sm"><span>Đã áp dụng {quote.voucher.code}</span><button aria-label="Bỏ voucher" disabled={submitting} onClick={() => { setQuote(null); setVoucherCode(''); setVoucherError(''); }}><FaTimes /></button></p>}
               {vouchers.length > 0 && <details className="mt-4"><summary className="cursor-pointer text-sm font-semibold text-red-600">Chọn mã ưu đãi ({vouchers.length})</summary><div className="mt-3 space-y-2">{vouchers.map(voucher => <button key={voucher._id} disabled={applyingVoucher || submitting} onClick={() => applyVoucher(voucher.code)} className="text-left w-full rounded-lg border border-dashed border-red-300 p-3 hover:bg-red-50 disabled:opacity-50"><strong className="text-red-600">{voucher.code}</strong><p className="text-sm mt-1">{voucher.description}</p><p className="text-xs text-gray-500 mt-1">Đơn tối thiểu {money(voucher.minOrder)}</p></button>)}</div></details>}
             </section>
-            <section className="bg-white rounded-lg shadow p-6">
+            <section className="bg-white rounded-lg shadow p-6 shop-panel">
               <h2 className="text-xl font-bold mb-5">Tóm tắt đơn hàng</h2>
               <dl className="space-y-3 text-gray-600">
                 <div className="flex justify-between gap-3"><dt>Tạm tính</dt><dd>{money(totals.itemsPrice)}</dd></div>

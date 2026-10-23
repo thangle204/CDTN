@@ -264,7 +264,7 @@ const AdminVouchers = () => {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-hidden shop-panel">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -293,11 +293,11 @@ const AdminVouchers = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="font-semibold text-red-600">
-                      {voucher.type === 'shipping' ? 'Miễn phí vận chuyển' : voucher.type === 'percent' ? `${voucher.discount}%` : `${voucher.discount.toLocaleString()}₫`}
+                      {voucher.type === 'shipping' ? 'Miễn phí vận chuyển' : voucher.type === 'percent' ? `${voucher.discount}%` : `${voucher.discount.toLocaleString('vi-VN')}₫`}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {voucher.minOrder.toLocaleString()}₫
+                    {voucher.minOrder.toLocaleString('vi-VN')}₫
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={voucher.usedCount >= voucher.maxUses ? 'text-red-600 font-semibold' : ''}>
@@ -346,7 +346,7 @@ const AdminVouchers = () => {
       </div>
 
       {filteredVouchers.length === 0 && (
-        <div className="text-center py-12 bg-white rounded-lg shadow mt-4">
+        <div className="text-center py-12 bg-white rounded-lg shadow mt-4 shop-panel">
           <p className="text-gray-600">
             {searchTerm 
               ? `Không tìm thấy voucher với từ khóa "${searchTerm}"` 

@@ -191,7 +191,7 @@ const Profile = () => {
         )}
 
         <form onSubmit={handleSubmit}>
-          <div className="bg-white rounded-lg shadow p-6 space-y-6">
+          <div className="bg-white rounded-lg shadow p-6 space-y-6 shop-panel">
             {/* Họ tên */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -206,7 +206,7 @@ const Profile = () => {
                 disabled={!editing}
                 required
                 className={`w-full px-4 py-2 border rounded-lg ${
-                  editing ? 'border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500' : 'bg-gray-50 border-gray-300'
+                  editing ? "border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500" : 'bg-gray-50 border-gray-300'
                 }`}
               />
             </div>
@@ -240,7 +240,7 @@ const Profile = () => {
                 disabled={!editing}
                 required
                 className={`w-full px-4 py-2 border rounded-lg ${
-                  editing ? 'border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500' : 'bg-gray-50 border-gray-300'
+                  editing ? "border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500" : 'bg-gray-50 border-gray-300'
                 }`}
                 placeholder="0xxxxxxxxx"
               />
@@ -264,7 +264,7 @@ const Profile = () => {
                         }));
                       }
                     }}
-                    className="text-sm text-blue-600 hover:underline"
+                    className="text-sm text-red-600 hover:underline"
                   >
                     {changingPassword ? '❌ Hủy đổi mật khẩu' : '🔒 Đổi mật khẩu'}
                   </button>
@@ -283,7 +283,7 @@ const Profile = () => {
                         value={formData.currentPassword}
                         onChange={handleChange}
                         required={changingPassword}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                         placeholder="Nhập mật khẩu hiện tại"
                       />
                     </div>
@@ -299,7 +299,7 @@ const Profile = () => {
                         value={formData.newPassword}
                         onChange={handleChange}
                         required={changingPassword}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                         placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)"
                       />
                     </div>
@@ -315,7 +315,7 @@ const Profile = () => {
                         value={formData.confirmPassword}
                         onChange={handleChange}
                         required={changingPassword}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                         placeholder="Nhập lại mật khẩu mới"
                       />
                     </div>
@@ -334,7 +334,7 @@ const Profile = () => {
                 <button
                   type="button"
                   onClick={() => setEditing(true)}
-                  className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
                 >
                   <FaEdit />
                   Chỉnh sửa thông tin

@@ -236,14 +236,14 @@ const AdminProducts = () => {
               placeholder="Tìm tên giày, thương hiệu..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 border-2 border-gray-300 rounded-md text-sm focus:outline-none focus:border-blue-500 w-64"
+              className="pl-10 pr-4 py-2 border-2 border-gray-300 rounded-md text-sm focus:outline-none focus:border-red-500 w-64"
             />
           </div>
           
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="border-2 border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+            className="border-2 border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-red-500"
           >
             <option value="all">Tất cả</option>
             <option value="visible">Đang hiển thị</option>
@@ -256,7 +256,7 @@ const AdminProducts = () => {
               resetForm();
               setShowModal(true);
             }}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center space-x-2 whitespace-nowrap"
+            className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 flex items-center space-x-2 whitespace-nowrap"
           >
             <FaPlus />
             <span>Thêm sản phẩm</span>
@@ -273,14 +273,14 @@ const AdminProducts = () => {
           </p>
           <button
             onClick={() => setSearchTerm('')}
-            className="text-blue-600 hover:text-blue-800 text-sm font-semibold"
+            className="text-red-600 hover:text-red-800 text-sm font-semibold"
           >
             Xóa tìm kiếm
           </button>
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-hidden shop-panel">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -318,7 +318,7 @@ const AdminProducts = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-red-600 font-semibold">
-                    {product.price.toLocaleString()}₫
+                    {product.price.toLocaleString('vi-VN')}₫
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
@@ -341,7 +341,7 @@ const AdminProducts = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                     <button
                       onClick={() => handleEdit(product)}
-                      className="text-blue-600 hover:text-blue-900 p-2"
+                      className="text-red-600 hover:text-red-800 p-2"
                       title="Chỉnh sửa"
                     >
                       <FaEdit size={16} />
@@ -368,7 +368,7 @@ const AdminProducts = () => {
 
       {/* ✅ THÔNG BÁO KHI KHÔNG TÌM THẤY */}
       {filteredProducts.length === 0 && (
-        <div className="text-center py-12 bg-white rounded-lg shadow mt-4">
+        <div className="text-center py-12 bg-white rounded-lg shadow mt-4 shop-panel">
           <p className="text-gray-600">
             {searchTerm 
               ? `Không tìm thấy sản phẩm với từ khóa "${searchTerm}"` 
@@ -422,7 +422,7 @@ const AdminProducts = () => {
 
               <div>
                 <label htmlFor="product-image-file" className="block text-sm font-medium text-gray-700 mb-1">Hình ảnh sản phẩm *</label>
-                <input id="product-image-file" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleImageChange} required={!formData.image && !imageFile} className="w-full rounded border border-gray-300 p-2 text-sm file:mr-4 file:rounded file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:font-semibold file:text-blue-700" />
+                <input id="product-image-file" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleImageChange} required={!formData.image && !imageFile} className="w-full rounded border border-gray-300 p-2 text-sm file:mr-4 file:rounded file:border-0 file:bg-red-50 file:px-4 file:py-2 file:font-semibold file:text-red-700" />
                 <p className="mt-1 text-xs text-gray-500">Chọn ảnh JPG, PNG hoặc WebP từ máy tính, tối đa 5 MB.</p>
                 {(imagePreview || formData.image) && <div className="mt-3 flex items-center gap-4"><img src={imagePreview || productImageUrl(formData.image)} alt="Xem trước ảnh sản phẩm" className="h-28 w-28 rounded-lg border object-contain" /><p className="break-all text-sm text-gray-600">{imageFile?.name || 'Ảnh hiện tại. Chọn ảnh khác để thay thế.'}</p></div>}
               </div>
@@ -447,12 +447,12 @@ const AdminProducts = () => {
                     <button type="button" aria-label={`Xóa dòng ${index + 1}`} disabled={formData.variants.length === 1} onClick={() => setFormData(previous => ({ ...previous, variants: previous.variants.filter((_, row) => row !== index) }))} className="rounded p-3 text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-30"><FaTrash /></button>
                   </div>)}
                 </div>
-                <button type="button" disabled={formData.variants.length >= 100} onClick={() => setFormData(previous => ({ ...previous, variants: [...previous.variants, { color: '', size: '', quantity: '' }] }))} className="mt-3 flex items-center gap-2 rounded border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 disabled:opacity-50"><FaPlus /> Thêm</button>
+                <button type="button" disabled={formData.variants.length >= 100} onClick={() => setFormData(previous => ({ ...previous, variants: [...previous.variants, { color: '', size: '', quantity: '' }] }))} className="mt-3 flex items-center gap-2 rounded border border-red-600 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"><FaPlus /> Thêm</button>
               </section>}
               </fieldset>
 
               <div className="flex gap-2 pt-4">
-                <button type="submit" disabled={saving} className="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50">
+                <button type="submit" disabled={saving} className="flex-1 bg-red-600 text-white py-2 rounded hover:bg-red-700 disabled:opacity-50">
                   {saving ? 'Đang lưu...' : editingProduct ? 'Cập nhật sản phẩm' : 'Thêm sản phẩm'}
                 </button>
                 <button type="button" disabled={saving} onClick={() => { setShowModal(false); setEditingProduct(null); resetForm(); }} className="flex-1 bg-gray-300 text-gray-700 py-2 rounded hover:bg-gray-400">

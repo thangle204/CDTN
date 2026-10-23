@@ -80,13 +80,13 @@ const Navbar = () => {
           {loading ? (
             <span className="store-header__action store-header__account-loading" aria-label="Đang tải tài khoản"><FaUser aria-hidden="true" /></span>
           ) : (
-            <Link to={user ? '/profile' : '/login'} className="store-header__action">
+            <Link to={user ? '/profile' : '/login'} className="store-header__action" aria-current={location.pathname === (user ? '/profile' : '/login') ? 'page' : undefined}>
               <FaUser aria-hidden="true" /><span>Tài khoản</span>
             </Link>
           )}
-          {user && <Link to="/my-orders" className="store-header__action store-header__orders"><FaBoxOpen aria-hidden="true" /><span>Đơn hàng</span></Link>}
-          <Link to="/cart" className="store-header__action"><FaShoppingBag aria-hidden="true" /><span>Giỏ hàng</span></Link>
-          {user?.isAdmin && <Link to="/admin" className="store-header__action store-header__admin"><FaCog aria-hidden="true" /><span>Quản trị</span></Link>}
+          {user && <Link to="/my-orders" className="store-header__action store-header__orders" aria-current={location.pathname === '/my-orders' ? 'page' : undefined}><FaBoxOpen aria-hidden="true" /><span>Đơn hàng</span></Link>}
+          <Link to="/cart" className="store-header__action" aria-current={location.pathname === '/cart' ? 'page' : undefined}><FaShoppingBag aria-hidden="true" /><span>Giỏ hàng</span></Link>
+          {user?.isAdmin && <Link to="/admin" className="store-header__action store-header__admin" aria-current={location.pathname === '/admin' ? 'page' : undefined}><FaCog aria-hidden="true" /><span>Quản trị</span></Link>}
           <button
             type="button"
             className="store-header__menu-button"

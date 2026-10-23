@@ -86,52 +86,52 @@ const AdminDashboard = () => {
       {error && <div role="alert" className="rounded bg-red-50 p-3 text-red-700">{error} <button onClick={fetchDashboardData} className="underline">Thử lại</button></div>}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 shop-stats">
+        <div className="bg-white rounded-lg shadow p-6 shop-panel">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-100 text-sm mb-1">Tổng đơn hàng</p>
+              <p className="text-gray-500 text-sm mb-1">Tổng đơn hàng</p>
               <p className="text-3xl font-bold">{overview?.totalOrders ?? '—'}</p>
             </div>
-            <FaShoppingCart className="text-5xl text-blue-200 opacity-50" />
+            <FaShoppingCart className="text-5xl text-red-600 bg-red-50 rounded-xl p-3" />
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-lg p-6 text-white">
+        <div className="bg-white rounded-lg shadow p-6 shop-panel">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-green-100 text-sm mb-1">Doanh thu</p>
+              <p className="text-gray-500 text-sm mb-1">Doanh thu (₫)</p>
               <p className="text-3xl font-bold">
-                {overview ? `${(overview.totalRevenue ?? 0).toLocaleString()}₫` : '—'}
+                {overview ? (overview.totalRevenue ?? 0).toLocaleString('vi-VN') : '—'}
               </p>
             </div>
-            <FaDollarSign className="text-5xl text-green-200 opacity-50" />
+            <FaDollarSign className="text-5xl text-green-700 bg-green-50 rounded-xl p-3" />
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
+        <div className="bg-white rounded-lg shadow p-6 shop-panel">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-purple-100 text-sm mb-1">Tổng sản phẩm</p>
+              <p className="text-gray-500 text-sm mb-1">Tổng sản phẩm</p>
               <p className="text-3xl font-bold">{totalProducts ?? '—'}</p>
             </div>
-            <FaTrophy className="text-5xl text-purple-200 opacity-50" />
+            <FaTrophy className="text-5xl text-gray-600 bg-gray-100 rounded-xl p-3" />
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow-lg p-6 text-white">
+        <div className="bg-white rounded-lg shadow p-6 shop-panel">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-orange-100 text-sm mb-1">Khách hàng</p>
+              <p className="text-gray-500 text-sm mb-1">Khách hàng</p>
               <p className="text-3xl font-bold">{overview?.totalCustomers ?? '—'}</p>
             </div>
-            <FaUsers className="text-5xl text-orange-200 opacity-50" />
+            <FaUsers className="text-5xl text-amber-700 bg-amber-50 rounded-xl p-3" />
           </div>
         </div>
       </div>
 
       {/* Orders by Status */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-lg shadow p-6 shop-panel">
         <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
           <FaBox className="text-blue-600" />
           Trạng thái đơn hàng
@@ -146,12 +146,12 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Customers */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-lg shadow p-6 shop-panel">
           <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
             <FaUsers className="text-green-600" />
-            Top 10 khách hàng (Theo số đơn)
+            Top 10 khách hàng theo tổng chi tiêu
           </h3>
           <div className="overflow-x-auto">
             <table className="min-w-full">
@@ -180,7 +180,7 @@ const AdminDashboard = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right text-sm font-semibold text-green-600">
-                      {customer.totalSpent.toLocaleString()}₫
+                      {customer.totalSpent.toLocaleString('vi-VN')}₫
                     </td>
                   </tr>
                 ))}
@@ -190,7 +190,7 @@ const AdminDashboard = () => {
         </div>
 
         {/* Best Selling Products */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-lg shadow p-6 shop-panel">
           <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
             <FaTrophy className="text-yellow-600" />
             Sản phẩm bán chạy
@@ -211,7 +211,7 @@ const AdminDashboard = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-bold text-blue-600">{product.totalSold} bán</p>
-                  <p className="text-xs text-green-600">{product.totalRevenue.toLocaleString()}₫</p>
+                  <p className="text-xs text-green-600">{product.totalRevenue.toLocaleString('vi-VN')}₫</p>
                 </div>
               </div>
             ))}
@@ -220,10 +220,10 @@ const AdminDashboard = () => {
       </div>
 
       {/* Doanh thu của các đơn đã thanh toán trong năm hiện tại. */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-lg shadow p-6 shop-panel">
         <div className="mb-6">
           <h3 className="text-lg font-bold flex items-center gap-2">
-            <FaChartLine className="text-purple-600" />
+            <FaChartLine className="text-red-600" />
             Doanh thu theo tháng (Năm {new Date().getFullYear()})
           </h3>
           <p className="text-sm text-gray-500 mt-1">Chỉ tính đơn đã thanh toán và chưa hủy.</p>
@@ -231,8 +231,8 @@ const AdminDashboard = () => {
 
         <div className="space-y-4">
           {/* Chọn một tháng để xem tổng tiền và số đơn. */}
-          <div className="relative pt-4">
-            <div className="flex items-end justify-between h-64 gap-1">
+          <div className="relative overflow-x-auto pt-16 pb-2" role="region" aria-label="Biểu đồ doanh thu theo tháng, cuộn ngang để xem thêm" tabIndex={0}>
+            <div className="flex items-end justify-between h-64 gap-1 min-w-[480px] px-4">
               {chartData.map((item, index) => {
                 const heightPercent = maxRevenue > 0 ? (item.totalRevenue / maxRevenue) * 100 : 0;
                 const isSelected = selectedMonth === item.month;
@@ -254,8 +254,8 @@ const AdminDashboard = () => {
                           }}
                           className={`w-full rounded-t transition-all ${
                             isSelected 
-                              ? 'bg-gradient-to-t from-purple-500 to-purple-700' 
-                              : 'bg-gradient-to-t from-blue-400 to-blue-600 hover:opacity-80'
+                              ? 'bg-gradient-to-t from-red-600 to-red-800'
+                              : 'bg-gradient-to-t from-red-200 to-red-500 hover:opacity-80'
                           }`}
                           style={{ height: `${heightPercent * 2.1}px`, minHeight: item.totalRevenue > 0 ? '4px' : '0' }}
                         >
@@ -263,7 +263,7 @@ const AdminDashboard = () => {
                           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
                             <div className="bg-gray-800 text-white text-xs rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
                               <p className="font-bold">Tháng {item.month}</p>
-                              <p className="text-green-300">{item.totalRevenue.toLocaleString()}₫</p>
+                              <p className="text-green-300">{item.totalRevenue.toLocaleString('vi-VN')}₫</p>
                               <p className="text-orange-300">{item.orderCount} đơn</p>
                             </div>
                           </div>
@@ -273,7 +273,7 @@ const AdminDashboard = () => {
                     
                     {/* Month label */}
                     <button type="button" onClick={() => setSelectedMonth(current => current === item.month ? null : item.month)} className={`text-xs font-semibold text-center ${
-                      isSelected ? 'text-purple-700' : 'text-gray-600'
+                      isSelected ? 'text-red-700' : 'text-gray-600'
                     }`}>
                       T{item.month}
                     </button>
@@ -291,8 +291,8 @@ const AdminDashboard = () => {
               </p>
               <p className="text-lg font-bold text-green-600">
                 {selectedMonth 
-                  ? chartData[selectedMonth - 1].totalRevenue.toLocaleString()
-                  : chartData.reduce((sum, item) => sum + item.totalRevenue, 0).toLocaleString()
+                  ? chartData[selectedMonth - 1].totalRevenue.toLocaleString('vi-VN')
+                  : chartData.reduce((sum, item) => sum + item.totalRevenue, 0).toLocaleString('vi-VN')
                 }₫
               </p>
             </div>
@@ -312,7 +312,7 @@ const AdminDashboard = () => {
       </div>
 
       {/* Recent Orders */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-lg shadow p-6 shop-panel">
         <h3 className="text-lg font-bold mb-4">Đơn hàng gần đây</h3>
         <div className="space-y-3">
           {overview?.recentOrders?.map((order) => (
@@ -325,7 +325,7 @@ const AdminDashboard = () => {
                 </p>
               </div>
               <div className="text-right">
-                <p className="font-bold text-red-600">{order.totalPrice.toLocaleString()}₫</p>
+                <p className="font-bold text-red-600">{order.totalPrice.toLocaleString('vi-VN')}₫</p>
                 <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full">
                   {order.orderStatus || 'Đang xử lý'}
                 </span>

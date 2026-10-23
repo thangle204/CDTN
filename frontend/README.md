@@ -13,6 +13,12 @@ Frontend dùng /api theo mặc định. Vite chuyển tiếp tới http://localh
 
 Giao diện hỗ trợ chọn size giày, giỏ theo từng size, checkout, voucher, đơn hàng, khôi phục mật khẩu và quản trị. Backend xác định giá cuối cùng và xác nhận thanh toán.
 
+Đợt hoàn thiện giao diện ngày 23/10/2026 thống nhất tông đỏ, trắng và xám đậm; cỡ chữ, khoảng cách, thẻ nội dung, biểu mẫu và nút bấm dùng chung cấu hình trong `tailwind.config.js` và `src/index.css`. Header đánh dấu mục đang mở; chân trang xuất hiện trên mọi trang. Các trang đăng nhập, đăng ký và khôi phục mật khẩu dùng chung `AuthLayout.jsx`, có bố cục gọn trên điện thoại. Trang giỏ hàng, checkout, tài khoản và quản trị dùng cùng kiểu thẻ; lựa chọn thanh toán được làm nổi bật, tiền hiển thị theo định dạng Việt Nam.
+
+Trang chủ có banner lấy ảnh, tên, thương hiệu và giá trực tiếp từ sản phẩm còn hàng; bấm ảnh mở đúng trang chi tiết. Không tự tạo nhãn giảm giá, giá gốc hoặc thứ hạng bán chạy. Hover ảnh và nút có hiệu ứng nhẹ, tôn trọng thiết lập giảm chuyển động; bàn phím có trạng thái focus và liên kết đến nội dung chính. Banner thu gọn trên điện thoại để ưu tiên xem sản phẩm.
+
+Kiểm tra đợt này: **166 kiểm tra frontend đạt, build thành công**, cùng **43 trường hợp giao diện/thao tác trên Chrome ở 1440px, 390px và 320px**. Đã xem các trang chính, menu, bộ lọc và form thêm sản phẩm. Chrome dùng hồ sơ riêng và API giả lập chỉ trong trang kiểm tra, không tạo đơn hoặc ghi dữ liệu MongoDB. Ảnh chụp và kết quả lưu trong `.tmp/ui-polish/` ở thư mục gốc, được Git bỏ qua.
+
 Trang chủ `/` và danh sách `/products` dùng chung bố cục catalog: bộ lọc bên trái, danh mục phía trên, lưới 4 cột trên màn hình lớn và 2 cột trên điện thoại. Trên tablet/điện thoại, nút **Bộ lọc** mở bảng chọn; Escape, nút đóng hoặc nền bên ngoài đều đóng được bảng.
 
 Bộ lọc thương hiệu, màu, size, giá và còn hàng lấy từ dữ liệu API. Màu và size phải thuộc cùng một biến thể còn hàng; sản phẩm cũ dùng tồn kho chung. Có sắp xếp mới nhất, giá và đánh giá, phân trang 20 sản phẩm; bộ lọc và trang được giữ trên URL khi tải lại hoặc quay lại. Nhấn sản phẩm/Chọn size mở trang chi tiết để chọn đúng màu và size trước khi thêm giỏ.

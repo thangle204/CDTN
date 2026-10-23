@@ -161,12 +161,12 @@ const AdminAccounts = () => {
             placeholder="Tìm kiếm tên, email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="border-2 border-gray-300 rounded-md px-4 py-2 text-sm focus:outline-none focus:border-blue-500"
+            className="border-2 border-gray-300 rounded-md px-4 py-2 text-sm focus:outline-none focus:border-red-500"
           />
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
-            className="border-2 border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+            className="border-2 border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-red-500"
           >
             <option value="all">Tất cả</option>
             <option value="admin">Admin</option>
@@ -175,7 +175,7 @@ const AdminAccounts = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-hidden shop-panel">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -197,7 +197,7 @@ const AdminAccounts = () => {
                         type="text"
                         value={editForm.name}
                         onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                        className="w-full border border-blue-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full border border-red-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                         placeholder="Tên"
                       />
                     ) : (
@@ -223,14 +223,14 @@ const AdminAccounts = () => {
                           type="tel"
                           value={editForm.phone}
                           onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                          className="w-full border border-blue-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full border border-red-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                           placeholder="0xxxxxxxxx"
                         />
                         <input
                           type="password"
                           value={editForm.password}
                           onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
-                          className="w-full border border-blue-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full border border-red-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                           placeholder="Mật khẩu mới (tùy chọn)"
                         />
                       </div>
@@ -256,7 +256,7 @@ const AdminAccounts = () => {
                         Đơn hàng: <span className="font-semibold">{customer.totalOrders || 0}</span>
                       </div>
                       <div className="text-green-600 font-semibold">
-                        {(customer.totalSpent || 0).toLocaleString()}₫
+                        {(customer.totalSpent || 0).toLocaleString('vi-VN')}₫
                       </div>
                     </div>
                   </td>
@@ -310,7 +310,7 @@ const AdminAccounts = () => {
                         <button
                           onClick={() => handleEdit(customer)}
                           disabled={actionId !== null}
-                          className="px-3 py-1 rounded text-xs font-semibold bg-blue-100 text-blue-700 hover:bg-blue-200"
+                          className="px-3 py-1 rounded text-xs font-semibold bg-red-100 text-red-700 hover:bg-red-200"
                           title="Sửa thông tin"
                         >
                           <FaEdit className="inline" />
@@ -358,7 +358,7 @@ const AdminAccounts = () => {
       </div>
 
       {filteredCustomers.length === 0 && (
-        <div className="text-center py-12 bg-white rounded-lg shadow mt-4">
+        <div className="text-center py-12 bg-white rounded-lg shadow mt-4 shop-panel">
           <p className="text-gray-600">Không tìm thấy tài khoản nào</p>
         </div>
       )}

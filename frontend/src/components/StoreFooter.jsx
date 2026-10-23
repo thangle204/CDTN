@@ -33,7 +33,7 @@ const StoreFooter = () => {
       </div>
       <div className="store-footer__container store-footer__bottom">
         <span>© {new Date().getFullYear()} SHOE STORE</span>
-        <span>Chọn đúng size. Tự tin mỗi bước chân.</span>
+        <div className="store-footer__payments" aria-label="Phương thức thanh toán"><span>Thanh toán</span><strong>COD</strong><strong>VNPAY Sandbox</strong></div>
       </div>
     </footer>
   );

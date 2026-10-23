@@ -1,7 +1,7 @@
 .store-header {
   position: relative;
   z-index: 40;
-  color: #202020;
+  color: var(--shop-ink);
   background: #fff;
   font-family: inherit;
 }
@@ -9,7 +9,7 @@
 .store-header__container,
 .store-footer__container {
   width: 100%;
-  max-width: 1600px;
+  max-width: var(--shop-width);
   margin: 0 auto;
   padding-right: 32px;
   padding-left: 32px;
@@ -81,9 +81,9 @@
 
 .store-header__main {
   display: flex;
-  min-height: 104px;
+  min-height: 100px;
   align-items: center;
-  gap: 40px;
+  gap: 32px;
 }
 
 .store-header__logo {
@@ -114,12 +114,15 @@
   max-width: 650px;
   height: 50px;
   margin-left: auto;
-  border: 1px solid #cfcfcf;
-  transition: border-color .15s ease;
+  border: 1px solid var(--shop-line);
+  border-radius: 12px;
+  background: #f7f8fa;
+  transition: border-color .15s ease, box-shadow .15s ease;
 }
 
 .store-header__search:focus-within {
-  border-color: #202020;
+  border-color: var(--shop-accent);
+  box-shadow: 0 0 0 3px #c7202610;
 }
 
 .store-header__search input {
@@ -128,8 +131,8 @@
   min-width: 0;
   padding: 0 16px;
   border: 0;
-  border-radius: 0;
-  background: #fff;
+  border-radius: 12px 0 0 12px;
+  background: transparent;
   color: #202020;
   font-size: 16px;
   outline: none;
@@ -141,12 +144,14 @@
 
 .store-header__search button {
   display: grid;
-  width: 48px;
+  width: 40px;
+  margin: 5px;
+  border-radius: 8px;
   flex-shrink: 0;
   place-items: center;
   border: 0;
-  background: #fff;
-  color: #202020;
+  background: var(--shop-accent);
+  color: #fff;
   cursor: pointer;
 }
 
@@ -154,24 +159,30 @@
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  gap: 24px;
+  gap: 12px;
   margin-left: auto;
 }
 
 .store-header__action {
   display: flex;
-  min-width: 64px;
+  min-width: 72px;
+  padding: 10px 8px;
+  border-radius: 12px;
   align-items: center;
   flex-direction: column;
   gap: 7px;
-  font-size: 14px;
+  font-size: 15px;
   white-space: nowrap;
 }
 
 .store-header__action svg {
-  width: 24px;
-  height: 24px;
+  width: 21px;
+  height: 21px;
 }
+
+.store-header__action:hover,
+.store-header__action[aria-current='page'] { background: #fff2f3; color: var(--shop-accent); }
+.store-header__search button:hover { color: #fff; background: #ac1b23; }
 
 .store-header__account-loading {
   color: #aaa;
@@ -188,7 +199,7 @@
 
 .store-header__nav-wrap {
   border-top: 1px solid #efefef;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid var(--shop-line);
 }
 
 .store-header__nav {
@@ -243,11 +254,15 @@
 }
 
 .store-footer {
-  padding-top: 50px;
-  border-top: 1px solid #e5e5e5;
-  background: #fafafa;
-  color: #202020;
+  padding-top: 48px;
+  border-top: 1px solid #293545;
+  background: #202b3a;
+  color: #f5f7fa;
 }
+
+.store-footer .store-header__logo { color: #fff; }
+.store-footer .store-header__logo span, .store-footer .store-header__logo i { color: #ff999f; }
+.store-footer a:hover { color: #ffb5ba; }
 
 .store-footer__main {
   display: grid;
@@ -258,7 +273,7 @@
 
 .store-footer__intro p {
   margin: 20px 0 0;
-  color: #757575;
+  color: #bac3cf;
   font-size: 16px;
   line-height: 1.9;
 }
@@ -277,7 +292,7 @@
 }
 
 .store-footer__links a {
-  color: #666;
+  color: #bac3cf;
   font-size: 16px;
 }
 
@@ -287,10 +302,13 @@
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  border-top: 1px solid #e7e7e7;
-  color: #888;
+  border-top: 1px solid #394453;
+  color: #bac3cf;
   font-size: 14px;
 }
+
+.store-footer__payments { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.store-footer__payments strong { padding: 4px 9px; border: 1px solid #4b5665; border-radius: 6px; color: #f5f7fa; font-size: 12px; font-weight: 600; }
 
 @media (max-width: 1199px) {
   .store-header__main { gap: 28px; }
@@ -339,7 +357,7 @@
   }
   .store-header__main .store-header__logo { font-size: 30px; justify-self: center; grid-row: 1; }
   .store-header__actions { gap: 10px; width: 100%; margin: 0; grid-row: 2; justify-content: space-between; }
-  .store-header__action { min-width: 0; font-size: 13px; min-height: 48px; gap: 6px; }
+  .store-header__action { min-width: 0; font-size: 13px; min-height: 48px; gap: 6px; padding: 8px 5px; }
   .store-header__action span {
     position: static;
     white-space: nowrap;
@@ -380,7 +398,7 @@
   .store-footer .store-header__logo { font-size: 32px; }
   .store-footer__intro p { margin-top: 14px; }
   .store-footer__bottom {
-    min-height: 68px;
+    min-height: 88px;
     align-items: flex-start;
     justify-content: center;
     flex-direction: column;

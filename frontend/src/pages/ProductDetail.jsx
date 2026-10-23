@@ -180,7 +180,7 @@ const ProductDetail = () => {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-20">
+      <div className="container mx-auto px-4 py-20 shop-page">
         <div className="flex flex-col items-center justify-center min-h-[60vh]">
           <div className="spinner mb-4"></div>
           <p className="text-gray-600 text-lg">Đang tải thông tin sản phẩm...</p>
@@ -191,11 +191,11 @@ const ProductDetail = () => {
 
   if (!product) {
     return (
-      <div className="container mx-auto px-4 py-20">
+      <div className="container mx-auto px-4 py-20 shop-page">
         <div className="text-center">
           <FaExclamationCircle className="text-6xl text-gray-300 mx-auto mb-4" />
           <p className="text-gray-600 text-xl">{error || 'Không tìm thấy giày'}</p>
-          <Link to="/products" className="mt-4 inline-block text-blue-600 hover:text-blue-800 font-medium">
+          <Link to="/products" className="mt-4 inline-block text-red-600 hover:text-red-800 font-medium">
             Quay lại danh sách sản phẩm
           </Link>
         </div>
@@ -205,15 +205,15 @@ const ProductDetail = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        <Link to="/products" className="inline-flex items-center space-x-2 text-blue-600 hover:text-blue-800 mb-6 font-medium transition-colors">
+      <div className="container mx-auto px-4 py-8 shop-page">
+        <Link to="/products" className="inline-flex items-center space-x-2 text-red-600 hover:text-red-800 mb-6 font-medium transition-colors">
           <FaArrowLeft />
           <span>Quay lại danh sách sản phẩm</span>
         </Link>
 
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Product Image */}
-          <div className="bg-white rounded-lg shadow p-8">
+          <div className="bg-white rounded-lg shadow p-8 shop-panel shop-product-image">
             {product.image ? (
               <img src={productImageUrl(product.image)} alt={product.name} className="w-full h-[500px] object-contain" onError={event => { event.currentTarget.onerror = null; event.currentTarget.src = '/shoe.svg'; }} />
             ) : (
@@ -225,7 +225,7 @@ const ProductDetail = () => {
 
           {/* Product Info */}
           <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white rounded-lg shadow p-6 shop-panel">
               <div className="mb-4">
                 <span className="inline-block bg-red-100 text-red-600 px-3 py-1 rounded-full text-sm font-semibold mb-3">
                   {product.category || product.brand}
@@ -251,14 +251,14 @@ const ProductDetail = () => {
               {/* Price */}
               <div className="bg-red-50 p-4 rounded-lg mb-6">
                 <p className="text-sm text-gray-600 mb-1">Giá bán</p>
-                <p className="text-4xl font-bold text-red-600">{product.price.toLocaleString()} ₫</p>
+                <p className="text-4xl font-bold text-red-600">{product.price.toLocaleString('vi-VN')} ₫</p>
               </div>
 
               {/* Description */}
               <div className="mb-6">
                 <h3 className="font-bold text-gray-800 mb-2">Giới thiệu sản phẩm</h3>
                 <p className="text-gray-700 leading-relaxed">
-                  {product.description || 'Giày chính hãng, bảo hành đầy đủ'}
+                  {product.description || 'Chưa có mô tả chi tiết cho mẫu giày này.'}
                 </p>
               </div>
 
@@ -313,7 +313,7 @@ const ProductDetail = () => {
                     min="1"
                     max={selectedStock}
                     disabled={hasVariants && (!selectedColor || !selectedSize || selectedStock <= 0)}
-                    className="w-32 border-2 border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500"
+                    className="w-32 border-2 border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:border-red-500"
                   />
                 </div>
 
@@ -349,7 +349,7 @@ const ProductDetail = () => {
         </div>
 
         {/* Detailed Information */}
-        <div className="mt-8 bg-white rounded-lg shadow">
+        <div className="mt-8 bg-white rounded-lg shadow shop-panel">
           <div className="border-b">
             <div className="flex">
               <button className="px-6 py-4 font-semibold border-b-2 border-red-600 text-red-600">
@@ -402,13 +402,13 @@ const ProductDetail = () => {
         </div>
 
         {/* Reviews Section */}
-        <div className="mt-8 bg-white rounded-lg shadow p-6">
+        <div className="mt-8 bg-white rounded-lg shadow p-6 shop-panel">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-gray-800">Đánh giá sản phẩm</h2>
             {user && (
               <button
                 onClick={() => setShowReviewForm(!showReviewForm)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
               >
                 {showReviewForm ? 'Hủy' : 'Viết đánh giá'}
               </button>
@@ -449,7 +449,7 @@ const ProductDetail = () => {
               <button
                 type="submit"
                 disabled={submittingReview}
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50"
               >
                 {submittingReview ? 'Đang gửi...' : 'Gửi đánh giá'}
               </button>

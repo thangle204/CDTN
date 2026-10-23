@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { authAPI } from '../utils/api';
+import AuthLayout from '../components/AuthLayout';
 import { useAuth } from '../context/AuthContext';
 
 const ResetPassword = () => {
@@ -31,10 +32,10 @@ const ResetPassword = () => {
   };
 
   return (
-    <div className="min-h-[75vh] flex items-center justify-center px-4 py-12">
+    <AuthLayout>
       <div className="max-w-md w-full">
-        <Link to="/" className="block text-center text-3xl font-bold mb-8">SHOE <span className="text-red-600">STORE</span></Link>
-        <div className="bg-white p-8 rounded-xl shadow">
+        <p className="shop-eyebrow mb-4">HỖ TRỢ TÀI KHOẢN</p>
+        <div className="bg-white p-8 rounded-xl shadow shop-panel">
           <h1 className="text-2xl font-bold mb-6">Đặt lại mật khẩu</h1>
           {success ? <div><p role="status" className="text-green-700 mb-6">{success}</p><Link to="/login" className="block bg-red-600 text-white text-center rounded-lg py-3 font-semibold">Đăng nhập</Link></div> : (
             <form onSubmit={submit} className="space-y-5">
@@ -47,7 +48,7 @@ const ResetPassword = () => {
           )}
         </div>
       </div>
-    </div>
+    </AuthLayout>
   );
 };
 export default ResetPassword;

@@ -75,12 +75,12 @@ const Cart = () => {
   if (authLoading || loading) return <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4"><div className="spinner" /><p>Đang tải giỏ giày...</p></div>;
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 shop-page">
       <Link to="/products" className="text-red-600 hover:underline">← Tiếp tục chọn giày</Link>
       <h1 className="text-3xl font-bold my-6 flex items-center gap-3"><FaShoppingCart className="text-red-600" />Giỏ hàng của bạn</h1>
       {error && <div role="alert" className="bg-red-50 text-red-700 border border-red-200 rounded-lg p-4 mb-6">{error}</div>}
       {!user || !cartItems.length ? (
-        <div className="text-center py-20 bg-white rounded-xl shadow">
+        <div className="text-center py-20 bg-white rounded-xl shadow shop-panel">
           <FaShoppingCart className="text-6xl text-gray-300 mx-auto mb-4" />
           <h2 className="text-2xl font-semibold mb-3">{user ? 'Chưa có giày trong giỏ' : 'Đăng nhập để xem giỏ hàng'}</h2>
           <p className="text-gray-600 mb-6">Chọn mẫu giày yêu thích và size phù hợp để bắt đầu.</p>
@@ -99,7 +99,7 @@ const Cart = () => {
               const overstock = item.quantity + otherQuantity > stock;
               const reducedQuantity = Math.min(item.quantity - 1, Math.max(1, stock - otherQuantity));
               return (
-                <article key={item._id} className="bg-white rounded-lg shadow p-4 flex gap-4">
+                <article key={item._id} className="bg-white rounded-lg shadow p-4 flex gap-4 shop-panel">
                   <Link to={productUrl} className="shrink-0"><img src={productImageUrl(product?.image || item.image)} alt={product?.name || item.name} className="w-20 h-20 sm:w-24 sm:h-24 object-contain rounded" onError={event => { event.currentTarget.onerror = null; event.currentTarget.src = '/shoe.svg'; }} /></Link>
                   <div className="flex-1 min-w-0">
                     <Link to={productUrl} className="font-semibold hover:text-red-600">{product?.name || item.name}</Link>
@@ -122,7 +122,7 @@ const Cart = () => {
               );
             })}
           </div>
-          <aside className="bg-white rounded-lg shadow p-6 h-fit">
+          <aside className="bg-white rounded-lg shadow p-6 h-fit shop-panel shop-summary">
             <h2 className="text-xl font-bold mb-5">Tóm tắt đơn giày</h2>
             <dl className="space-y-3">
               <div className="flex justify-between"><dt>Tạm tính</dt><dd>{money(total)}</dd></div>

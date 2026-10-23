@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FaEnvelope, FaArrowLeft } from 'react-icons/fa';
 import { authAPI } from '../utils/api';
+import AuthLayout from '../components/AuthLayout';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -28,9 +29,9 @@ const ForgotPassword = () => {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
+      <AuthLayout>
         <div className="max-w-md w-full">
-          <div className="bg-white rounded-lg shadow-md p-8 text-center">
+          <div className="bg-white rounded-lg shadow-md p-8 text-center shop-panel">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
               <span className="text-green-600 text-3xl">✓</span>
             </div>
@@ -51,23 +52,20 @@ const ForgotPassword = () => {
             </Link>
           </div>
         </div>
-      </div>
+      </AuthLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
+    <AuthLayout>
       <div className="max-w-md w-full">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2 text-3xl font-bold mb-2">
-            <span className="text-gray-800">SHOE</span>
-            <span className="text-red-600">STORE</span>
-          </Link>
-          <p className="text-gray-600">Khôi phục mật khẩu</p>
+        <div className="mb-8">
+          <p className="shop-eyebrow">HỖ TRỢ TÀI KHOẢN</p>
+          <h1 className="shop-auth__title">Lấy lại quyền truy cập</h1>
+          <p className="text-sm text-gray-600">Chúng tôi sẽ giúp bạn khôi phục mật khẩu.</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-8">
+        <div className="bg-white rounded-lg shadow-md p-8 shop-panel">
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Quên mật khẩu</h2>
           <p className="text-sm text-gray-600 mb-6">
             Nhập email để nhận hướng dẫn đặt lại mật khẩu
@@ -81,13 +79,15 @@ const ForgotPassword = () => {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="forgot-email" className="block text-sm font-medium text-gray-700 mb-2">
                 Email
               </label>
               <div className="relative">
                 <FaEnvelope className="absolute left-3 top-3 text-gray-400" />
                 <input
                   type="email"
+                  id="forgot-email"
+                  autoComplete="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -117,7 +117,7 @@ const ForgotPassword = () => {
           </form>
         </div>
       </div>
-    </div>
+    </AuthLayout>
   );
 };
 

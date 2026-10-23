@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FaUser, FaLock } from 'react-icons/fa';
+import AuthLayout from '../components/AuthLayout';
 
 const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -34,18 +35,15 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
+    <AuthLayout>
       <div className="max-w-md w-full">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2 text-3xl font-bold mb-2">
-            <span className="text-gray-800">SHOE</span>
-            <span className="text-red-600">STORE</span>
-          </Link>
-          <p className="text-gray-600">Đăng nhập để tiếp tục</p>
+        <div className="mb-8">
+          <p className="shop-eyebrow">TÀI KHOẢN SHOE STORE</p>
+          <h1 className="shop-auth__title">Chào mừng bạn trở lại</h1>
+          <p className="text-sm text-gray-600">Đăng nhập để tiếp tục mua sắm cùng chúng tôi.</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-8">
+        <div className="bg-white rounded-lg shadow-md p-8 shop-panel">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Đăng nhập</h2>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -56,11 +54,12 @@ const Login = () => {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+              <label htmlFor="login-email" className="block text-sm font-medium text-gray-700 mb-2">Email</label>
               <div className="relative">
                 <FaUser className="absolute left-3 top-3 text-gray-400" />
                 <input
                   type="email"
+                  id="login-email"
                   name="email"
                   autoComplete="email"
                   value={formData.email}
@@ -73,11 +72,12 @@ const Login = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Mật khẩu</label>
+              <label htmlFor="login-password" className="block text-sm font-medium text-gray-700 mb-2">Mật khẩu</label>
               <div className="relative">
                 <FaLock className="absolute left-3 top-3 text-gray-400" />
                 <input
                   type="password"
+                  id="login-password"
                   name="password"
                   autoComplete="current-password"
                   value={formData.password}
@@ -112,7 +112,7 @@ const Login = () => {
           </div>
         </div>
       </div>
-    </div>
+    </AuthLayout>
   );
 };
 

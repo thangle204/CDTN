@@ -1,7 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/Navbar';
-import AdminRoute from './components/AdminRoute'; // ✅ 1. Import cổng bảo vệ
+import StoreFooter from './components/StoreFooter';
+import AdminRoute from './components/AdminRoute';
 
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -22,8 +23,10 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="min-h-screen bg-gray-50">
+        <div className="shop-app min-h-screen bg-gray-50">
+          <a href="#main-content" className="shop-skip-link">Đến nội dung chính</a>
           <Navbar />
+          <main id="main-content" className="shop-main" tabIndex={-1}>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
@@ -43,6 +46,8 @@ function App() {
             <Route path="*" element={<div className="container mx-auto px-4 py-20 text-center"><h1 className="text-3xl font-bold mb-4">Không tìm thấy trang</h1><Link to="/products" className="text-red-600 hover:underline">Khám phá bộ sưu tập giày</Link></div>} />
 
           </Routes>
+          </main>
+          <StoreFooter />
         </div>
       </Router>
     </AuthProvider>

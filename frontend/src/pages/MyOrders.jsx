@@ -143,7 +143,7 @@ const MyOrders = () => {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="container mx-auto px-4 py-12">
-          <div className="max-w-2xl mx-auto text-center py-20 bg-white rounded-lg shadow">
+          <div className="max-w-2xl mx-auto text-center py-20 bg-white rounded-lg shadow shop-panel">
             <FaBox className="text-6xl text-gray-300 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-gray-800 mb-2">Chưa có đơn hàng</h2>
             <p className="text-gray-600 mb-6">
@@ -175,7 +175,7 @@ const MyOrders = () => {
         <div className="container mx-auto px-4 py-12">
           <h1 className="text-3xl font-bold mb-8 text-gray-800">Đơn hàng của tôi</h1>
           
-          <div className="max-w-2xl mx-auto text-center py-20 bg-white rounded-lg shadow">
+          <div className="max-w-2xl mx-auto text-center py-20 bg-white rounded-lg shadow shop-panel">
             <FaBox className="text-6xl text-gray-300 mx-auto mb-4" />
             {error ? <div role="alert"><p className="text-red-600 mb-4">{error}</p><button onClick={fetchOrders} className="text-red-600 underline">Thử lại</button></div> : <p className="text-gray-600 text-xl font-medium mb-2">Bạn chưa có đơn hàng nào</p>}
             <p className="text-gray-500 mb-6">Hãy đặt hàng ngay để nhận ưu đãi!</p>
@@ -193,7 +193,7 @@ const MyOrders = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 shop-page">
         <h1 className="text-3xl font-bold mb-8 text-gray-800 flex items-center gap-3">
           <FaBox className="text-red-600" />
           Đơn hàng của tôi
@@ -202,7 +202,7 @@ const MyOrders = () => {
 
         {canceling && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-xl text-center">
+            <div className="bg-white p-6 rounded-lg shadow-xl text-center shop-panel">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
               <p className="text-gray-700 font-semibold">Đang hủy đơn hàng...</p>
             </div>
@@ -211,7 +211,7 @@ const MyOrders = () => {
 
         <div className="space-y-6">
           {orders.map((order) => (
-            <div key={order._id} className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
+            <div key={order._id} className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow shop-panel">
               {/* Order Header */}
               <div className="border-b border-gray-200 p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -236,7 +236,7 @@ const MyOrders = () => {
                   
                   <div className="text-left sm:text-right">
                     <p className="text-sm text-gray-600 mb-1">Tổng tiền</p>
-                    <p className="text-2xl font-bold text-red-600">{order.totalPrice.toLocaleString()}₫</p>
+                    <p className="text-2xl font-bold text-red-600">{order.totalPrice.toLocaleString('vi-VN')}₫</p>
                   </div>
                 </div>
               </div>
@@ -265,7 +265,7 @@ const MyOrders = () => {
                         </div>
                         <div className="text-right">
                           <p className="font-bold text-red-600">
-                            {(item.price * item.quantity).toLocaleString()}₫
+                            {(item.price * item.quantity).toLocaleString('vi-VN')}₫
                           </p>
                         </div>
                       </div>

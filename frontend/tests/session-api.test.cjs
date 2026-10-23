@@ -6,6 +6,7 @@ const esbuild = require('esbuild');
 let api;
 let authAPI;
 let customersAPI;
+let ordersAPI;
 
 before(async () => {
   const result = await esbuild.build({
@@ -15,7 +16,7 @@ before(async () => {
   });
   const module = { exports: {} };
   new Function('module', 'exports', 'require', result.outputFiles[0].text)(module, module.exports, require);
-  ({ default: api, authAPI, customersAPI } = module.exports);
+  ({ default: api, authAPI, customersAPI, ordersAPI } = module.exports);
 });
 
 const setup = (token = 'token-A') => {
@@ -40,6 +41,35 @@ const expiredRequest = (path = '/orders/myorders') => {
   const settled = api.get(path).then(() => assert.fail('Expected unauthorized response'), error => error);
   return { started, settled, reject: () => reject() };
 };
+
+test('VNPAY API preserves the original return query and uses cancellable order payment requests', async () => {
+  setup();
+  const requests = [];
+  api.defaults.adapter = async config => {
+    requests.push(config);
+    return { status: 200, data: {}, config };
+  };
+  const controller = new AbortController();
+  await ordersAPI.createVnpayPayment('order-1', { signal: controller.signal });
+  const rawQuery = '?vnp_OrderInfo=Thanh+toan%20giay&vnp_SecureHash=a%2Bb%2Fc';
+  await ordersAPI.verifyVnpayReturn(rawQuery, { signal: controller.signal });
+  await ordersAPI.getOrderById('order-1', { signal: controller.signal });
+  await ordersAPI.reconcileVnpayPayment('order-1', { signal: controller.signal });
+  await ordersAPI.reconcileVnpayPayment('order-1', { signal: controller.signal, txnRef: 'attempt-1' });
+  assert.equal(requests[0].method, 'post');
+  assert.equal(requests[0].url, '/orders/order-1/vnpay/payment');
+  assert.equal(requests[0].data, '{}');
+  assert.equal(requests[1].method, 'get');
+  assert.equal(requests[1].url, '/payments/vnpay/return' + rawQuery);
+  assert.equal(requests[1].params, undefined);
+  assert.equal(requests[2].url, '/orders/order-1');
+  assert.equal(requests[3].url, '/orders/order-1/vnpay/reconcile');
+  assert.equal(requests[3].method, 'post');
+  assert.equal(requests[3].data, '{}');
+  assert.equal(requests[3].timeout, 30000);
+  assert.deepEqual(JSON.parse(requests[4].data), { txnRef: 'attempt-1' });
+  assert.ok(requests.every(config => config.signal === controller.signal));
+});
 
 test('profile restoration pins its captured token even if storage changes before Axios sends the request', async () => {
   setup();

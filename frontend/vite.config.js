@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+import { DEV_WORKSPACE_HEADER, devWorkspaceId } from '../backend/utils/devWorkspace.js'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -7,6 +8,7 @@ export default defineConfig(({ mode }) => {
   return {
   plugins: [react()],
   server: {
+    headers: { [DEV_WORKSPACE_HEADER]: devWorkspaceId },
     port: 5173,
     strictPort: true,
     proxy: {

@@ -32,6 +32,13 @@ const placeOrder = async (ctx, token, extra = {}) => {
     token, body: { shippingAddress, paymentMethod: 'COD', expectedCart, ...extra },
   });
 };
+const placeLegacyBankOrder = async (ctx, token) => {
+  const order = assertStatus(await placeOrder(ctx, token), 201);
+  // Only isolated fixtures use BANK to cover orders created before its removal from checkout.
+  const updated = await Order.updateOne({ _id: order._id }, { $set: { paymentMethod: 'BANK' } });
+  assert.equal(updated.matchedCount, 1);
+  return order;
+};
 const cancelOrder = (ctx, token, id) => ctx.request('PUT', `/api/orders/${id}/cancel`, { token });
 const stockOf = (product) => product.variants.map(({ color, size, quantity }) => ({ color, size, quantity }));
 const ordersFor = (product) => Order.find({ 'orderItems.product': product._id });
@@ -147,7 +154,7 @@ test('real MongoDB checkout, cancellation, payment and archived inventory', { ti
     for (let iteration = 0; iteration < 5; iteration += 1) {
       const product = await ctx.createProduct({ variants: [{ color: 'Trắng', size: 40, quantity: 1 }] });
       await addToCart(ctx, buyerToken, product);
-      const placed = assertStatus(await placeOrder(ctx, buyerToken, { paymentMethod: 'BANK' }), 201);
+      const placed = await placeLegacyBankOrder(ctx, buyerToken);
       const [payment, cancellation] = await Promise.all([
         ctx.request('PUT', `/api/orders/${placed._id}/payment`, { token: adminToken, body: { isPaid: true } }),
         cancelOrder(ctx, buyerToken, placed._id),
@@ -168,7 +175,7 @@ test('real MongoDB checkout, cancellation, payment and archived inventory', { ti
     // Also guarantee the paid branch is checked regardless of race scheduling.
     const paidProduct = await ctx.createProduct({ variants: [{ color: 'Trắng', size: 40, quantity: 1 }] });
     await addToCart(ctx, buyerToken, paidProduct);
-    const paidOrder = assertStatus(await placeOrder(ctx, buyerToken, { paymentMethod: 'BANK' }), 201);
+    const paidOrder = await placeLegacyBankOrder(ctx, buyerToken);
     assertStatus(await ctx.request('PUT', `/api/orders/${paidOrder._id}/payment`, {
       token: adminToken, body: { isPaid: true },
     }), 200);

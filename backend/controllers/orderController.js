@@ -13,6 +13,7 @@ import { getProductVariant, variantKey } from '../utils/productVariants.js';
 import { checkoutCartKey } from '../utils/checkoutCart.js';
 import { releaseCheckoutReservations } from '../utils/checkoutReservations.js';
 import { publicOrder, publicCustomerOrder } from '../utils/orderPresentation.js';
+import { getVnpayConfig } from '../utils/vnpay.js';
 
 const CHECKOUT_LOCK_MS = 10 * 60 * 1000;
 const COMMITTED_ORDERS = { checkoutState: { $ne: 'pending' } };
@@ -95,20 +96,6 @@ const changeInventory = (item, delta) => {
   return Product.updateOne(filter, update);
 };
 
-const normalizeBankTransferInfo = (input) => {
-  if (input == null) return undefined;
-  if (typeof input !== 'object' || Array.isArray(input)) throw orderError(400, 'Thông tin chuyển khoản không hợp lệ');
-  const result = {};
-  for (const field of ['bankName', 'accountNumber', 'accountHolder', 'accountName', 'transferNote', 'transferContent']) {
-    if (input[field] == null) continue;
-    if (typeof input[field] !== 'string') throw orderError(400, 'Thông tin chuyển khoản phải là chuỗi ký tự');
-    result[field] = input[field].trim();
-  }
-  if (!result.accountHolder && result.accountName) result.accountHolder = result.accountName;
-  if (!result.transferNote && result.transferContent) result.transferNote = result.transferContent;
-  return result;
-};
-
 const addOrderItems = async (req, res) => {
   let customer;
   let order;
@@ -144,7 +131,10 @@ const addOrderItems = async (req, res) => {
   try {
     if (req.accountType === 'staff' || req.user.accountType === 'staff') throw orderError(403, 'Tài khoản nhân viên không có giỏ hàng khách hàng');
     const paymentMethod = req.body.paymentMethod || 'COD';
-    if (!['COD', 'BANK'].includes(paymentMethod)) throw orderError(400, 'Phương thức thanh toán không hợp lệ');
+    // BANK remains supported for historical orders, but cannot be selected for a new order.
+    if (!['COD', 'VNPAY'].includes(paymentMethod)) throw orderError(400, 'Vui lòng chọn thanh toán khi nhận hàng (COD) hoặc VNPAY');
+    // Fail before claiming a cart/reserving stock when Sandbox is not set up.
+    if (paymentMethod === 'VNPAY') getVnpayConfig();
     const expectedCart = checkoutCartKey(req.body.expectedCart);
     const now = new Date();
     // Bump __v so a cart mutation loaded before this claim cannot overwrite it.
@@ -197,6 +187,9 @@ const addOrderItems = async (req, res) => {
       validateVoucherEligibility(voucher, itemsPrice, now);
     }
     const pricing = calculateOrderPricing(itemsPrice, voucher);
+    if (paymentMethod === 'VNPAY' && (pricing.totalPrice < 5000 || pricing.totalPrice > 9999999999)) {
+      throw orderError(400, 'Thanh toán VNPAY yêu cầu số tiền từ 5.000đ và nằm trong giới hạn cho phép');
+    }
     if (req.body.expectedTotalPrice !== undefined) {
       if (!isMoney(req.body.expectedTotalPrice)) throw orderError(400, 'Tổng tiền xác nhận không hợp lệ');
       if (req.body.expectedTotalPrice !== pricing.totalPrice) {
@@ -208,7 +201,6 @@ const addOrderItems = async (req, res) => {
       user: req.user._id, orderItems,
       shippingAddress: normalizeShippingAddress(req.body.shippingAddress, customer),
       paymentMethod,
-      bankTransferInfo: paymentMethod === 'BANK' ? normalizeBankTransferInfo(req.body.bankTransferInfo) : undefined,
       ...pricing,
       ...(voucher ? { voucherCode: voucher.code, voucher: { _id: voucher._id, code: voucher.code, type: voucher.type, discount: voucher.discount } } : {}),
       isPaid: false,
@@ -421,6 +413,9 @@ const updatePaymentStatus = async (req, res) => {
     const order = await Order.findById(req.params.id);
     if (!order) throw orderError(404, 'Không tìm thấy đơn hàng');
     requireCommittedOrder(order);
+    if (order.paymentMethod === 'VNPAY') {
+      throw orderError(400, 'Thanh toán VNPAY chỉ được cập nhật từ thông báo đã xác thực của cổng thanh toán');
+    }
     if (NON_SALES_STATUSES.includes(order.orderStatus) || order.cancellationLock || order.deliveryReturn) {
       throw orderError(400, 'Không thể đổi thanh toán của đơn đã hủy hoặc giao thất bại');
     }
@@ -443,6 +438,9 @@ const confirmOrderRefund = async (req, res) => {
     const order = await Order.findById(req.params.id);
     if (!order) throw orderError(404, 'Không tìm thấy đơn hàng');
     requireCommittedOrder(order);
+    if (order.paymentReviewRequired) {
+      throw orderError(409, 'Cần đối soát các giao dịch thanh toán dư trước khi xác nhận hoàn tiền');
+    }
     const cancelled = order.orderStatus === 'Đã hủy' && order.stockRestored && !order.deliveryReturn;
     const returned = order.orderStatus === 'Đã xử lý hoàn hàng' && order.deliveryReturn?.state === 'completed'
       && isMoney(order.deliveryReturn.refundAmount) && order.deliveryReturn.refundAmount > 0;
@@ -456,6 +454,7 @@ const confirmOrderRefund = async (req, res) => {
         'deliveryReturn.state': 'completed', 'deliveryReturn.refundAmount': order.deliveryReturn.refundAmount,
       }),
       cancellationLock: null, refundStatus: { $ne: 'refunded' },
+      paymentReviewRequired: { $ne: true },
     }, { $set: { refundStatus: 'refunded', refundedAt: new Date() }, $inc: { __v: 1 } }, { new: true, runValidators: true });
     if (!updated) throw orderError(409, 'Trạng thái hoàn tiền đã thay đổi. Vui lòng tải lại.');
     return res.json(publicOrder(updated));
@@ -503,12 +502,16 @@ const deleteOrder = async (req, res) => {
     const order = await Order.findById(req.params.id);
     if (!order) throw orderError(404, 'Không tìm thấy đơn hàng');
     requireCommittedOrder(order);
+    if (order.paymentMethod === 'VNPAY') {
+      throw orderError(400, 'Cần giữ đơn VNPAY để đối chiếu thông báo thanh toán và hoàn tiền đến muộn');
+    }
     if (order.orderStatus !== 'Đã hủy' || !order.stockRestored || order.cancellationLock || order.deliveryReturn) {
       throw orderError(400, 'Chỉ được xóa đơn đã hủy và hoàn tất hoàn kho');
     }
     if (order.isPaid && order.refundStatus !== 'refunded') throw orderError(400, 'Cần hoàn tiền và xác nhận đã hoàn tiền trước khi xóa đơn');
     const result = await Order.deleteOne({
       ...COMMITTED_ORDERS, _id: order._id, orderStatus: 'Đã hủy', stockRestored: true, cancellationLock: null,
+      paymentMethod: { $ne: 'VNPAY' },
       'deliveryReturn.state': { $exists: false },
       $or: [{ isPaid: false }, { refundStatus: 'refunded' }],
     });

@@ -12,6 +12,7 @@ import Products from './pages/Products';
 import ProductDetail from './pages/ProductDetail';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
+import VnpayReturn from './pages/VnpayReturn';
 import MyOrders from './pages/MyOrders';
 import Profile from './pages/Profile';
 import Admin from './pages/Admin';
@@ -33,6 +34,7 @@ function App() {
             <Route path="/products/:id" element={<ProductDetail />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/checkout" element={<Checkout />} />
+            <Route path="/payment/vnpay/return" element={<VnpayReturn />} />
             <Route path="/my-orders" element={<MyOrders />} />
             <Route path="/profile" element={<Profile />} />
             <Route element={<AdminRoute />}>

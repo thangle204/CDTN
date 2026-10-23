@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 
 export const isDeliveryReturnOrder = order => ['Giao thất bại', 'Đã xử lý hoàn hàng'].includes(order?.orderStatus);
-export const canConfirmOrderRefund = order => Boolean(order?.isPaid && order.refundStatus === 'pending'
+export const canConfirmOrderRefund = order => Boolean(order?.isPaid && !order.paymentReviewRequired && order.refundStatus === 'pending'
   && !order.cancellationLock && (order.orderStatus === 'Đã hủy'
     || order.orderStatus === 'Đã xử lý hoàn hàng' && order.deliveryReturn?.state === 'completed' && order.deliveryReturn.refundAmount > 0));
 const money = value => `${Number(value || 0).toLocaleString('vi-VN')} ₫`;

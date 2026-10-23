@@ -10,11 +10,13 @@ const mockPlugin = {
     build.onResolve({ filter: /^react(?:\/jsx-runtime)?$/ }, args => ({ path: args.path, namespace: 'mock' }));
     build.onResolve({ filter: /^react-icons\/fa$/ }, () => ({ path: 'icons', namespace: 'mock' }));
     build.onResolve({ filter: /utils\/api(?:\.js)?$/ }, () => ({ path: 'api', namespace: 'mock' }));
+    build.onResolve({ filter: /context\/AuthContext(?:\.jsx)?$/ }, () => ({ path: 'auth', namespace: 'mock' }));
     build.onLoad({ filter: /.*/, namespace: 'mock' }, args => {
       if (args.path === 'react') return { contents: 'export const useState = initial => globalThis.__adminOrdersTest.state(initial); export const useEffect = effect => globalThis.__adminOrdersTest.effects.push(effect); export const useRef = initial => globalThis.__adminOrdersTest.ref(initial);' };
       if (args.path === 'react/jsx-runtime') return { contents: 'export const Fragment = "fragment"; export const jsx = (type, props, key) => ({ type, props: props || {}, key }); export const jsxs = jsx;' };
       if (args.path === 'icons') return { contents: ['FaBox', 'FaPhone', 'FaMapMarkerAlt', 'FaEdit', 'FaSearch', 'FaMoneyBillWave'].map(icon => `export const ${icon} = () => null;`).join('\n') };
       if (args.path === 'api') return { contents: 'export const ordersAPI = new Proxy({}, { get: (_, name) => (...args) => globalThis.__adminOrdersTest.request(name, args) });' };
+      if (args.path === 'auth') return { contents: 'export const useAuth = () => globalThis.__adminOrdersTest.auth;' };
     });
   },
 };
@@ -54,6 +56,7 @@ const setup = orders => {
   const harness = {
     values: [orders, false], cursor: 0, effects: [], calls: [], confirmations: [], alerts: [], events: [], refs: [], refCursor: 0,
     confirmResult: true,
+    auth: { user: { _id: 'admin-a', isAdmin: true }, loading: false },
     state(initial) {
       const index = this.cursor++;
       if (!(index in this.values)) this.values[index] = typeof initial === 'function' ? initial() : initial;
@@ -93,6 +96,66 @@ test('paid shipping and delivered orders hide payment reversal for both BANK and
       assert.equal(h.calls.length, 0);
     }
   }
+});
+
+test('VNPAY payment status is controlled by gateway callbacks and unpaid orders cannot ship', () => {
+  for (const isPaid of [true, false]) {
+    const h = setup([orderOf({ paymentMethod: 'VNPAY', isPaid, orderStatus: 'Đã xác nhận' })]);
+    assert.equal(h.paymentButtons().length, 0);
+    assert.match(text(h.render()), /VNPAY Sandbox/);
+    nodes(h.render()).find(node => node.type === 'button' && node.props.title === 'Cập nhật trạng thái').props.onClick();
+    const statusSelect = nodes(h.render()).find(node => node.type === 'select' && node.props.className?.split(' ').includes('border-blue-500'));
+    const options = nodes(statusSelect).filter(node => node.type === 'option').map(text);
+    assert.equal(options.includes('Đang giao'), isPaid);
+    assert.equal(h.calls.length, 0);
+  }
+});
+
+test('admin can inspect gateway transaction references and detect an overpayment requiring review', () => {
+  const h = setup([orderOf({ paymentMethod: 'VNPAY', paymentReviewRequired: true,
+    vnpayPayments: [{ txnRef: 'attempt-1', transactionNo: 'sandbox-1234', bankCode: 'NCB', state: 'paid', amount: 230000 }] })]);
+  const tree = h.render();
+  assert.match(text(tree), /sandbox-1234/);
+  assert.match(text(tree), /Có nhiều giao dịch thành công/);
+  assert.match(text(tree), /xử lý khoản thanh toán dư/);
+});
+
+test('admin reconciliation queries the sole existing attempt and refreshes persisted orders without creating a payment', async () => {
+  const order = orderOf({ paymentMethod: 'VNPAY', isPaid: false, vnpayPayments: [{ txnRef: 'attempt-1', state: 'pending' }] });
+  const h = setup([order]);
+  h.onRequest = async name => name === 'reconcileVnpayPayment' ? { data: { order: { _id: order._id, isPaid: true }, message: 'VNPAY đã xác nhận thanh toán' } } : { data: [{ ...order, isPaid: true }] };
+  await h.button('Đối chiếu với VNPAY').props.onClick();
+  assert.deepEqual(h.calls.map(call => call.name), ['reconcileVnpayPayment', 'getAllOrders']);
+  assert.equal(h.calls[0].args[0], order._id); assert.equal(h.calls[0].args[1].txnRef, 'attempt-1'); assert.ok(h.calls[0].args[1].signal instanceof AbortSignal);
+  assert.equal(h.paymentButtons().length, 0); assert.match(text(h.render()), /VNPAY đã xác nhận thanh toán/);
+});
+
+test('admin reconciliation requires selecting an exact reference when an order has several unresolved attempts', async () => {
+  const order = orderOf({ paymentMethod: 'VNPAY', isPaid: false, vnpayPayments: [{ txnRef: 'attempt-1', state: 'failed' }, { txnRef: 'attempt-2', state: 'pending' }] });
+  const h = setup([order]); const button = h.button('Đối chiếu với VNPAY');
+  assert.equal(button.props.disabled, true); await button.props.onClick(); assert.equal(h.calls.length, 0);
+  const select = nodes(h.render()).find(node => node.type === 'select' && node.props['aria-label'] === 'Giao dịch cần đối chiếu');
+  select.props.onChange({ target: { value: 'attempt-1' } });
+  h.onRequest = async name => name === 'reconcileVnpayPayment' ? { data: { order, message: 'Chưa hoàn tất thanh toán' } } : { data: [order] };
+  assert.equal(h.button('Đối chiếu với VNPAY').props.disabled, false); await h.button('Đối chiếu với VNPAY').props.onClick();
+  assert.equal(h.calls[0].args[1].txnRef, 'attempt-1'); assert.match(text(h.render()), /Chưa hoàn tất thanh toán/);
+});
+
+test('admin reconciliation hides actions for orders without attempts, paid orders and active locks', () => {
+  for (const changes of [{ vnpayPayments: [] }, { isPaid: true }, { cancellationLock: 'busy' }, { checkoutFinalized: false }, { deliveryReturn: { state: 'processing' } }, { paymentMethod: 'BANK' }]) {
+    const h = setup([orderOf({ paymentMethod: 'VNPAY', isPaid: false, vnpayPayments: [{ txnRef: 'attempt-1', state: 'pending' }], ...changes })]);
+    assert.equal(nodes(h.render()).some(node => node.type === 'button' && text(node) === 'Đối chiếu với VNPAY'), false);
+  }
+});
+
+test('admin reconciliation ignores duplicate clicks and late results for another account', async () => {
+  const order = orderOf({ paymentMethod: 'VNPAY', isPaid: false, vnpayPayments: [{ txnRef: 'attempt-1', state: 'pending' }] });
+  const h = setup([order]); let resolve;
+  h.onRequest = () => new Promise(done => { resolve = done; });
+  const button = h.button('Đối chiếu với VNPAY'); const pending = button.props.onClick(); const duplicate = button.props.onClick();
+  assert.equal(h.calls.length, 1); h.auth.user = { _id: 'admin-b', isAdmin: true }; h.render();
+  resolve({ data: { order: { _id: order._id, isPaid: true }, message: 'Old admin result' } }); await Promise.all([pending, duplicate]);
+  assert.equal(h.calls.length, 1); assert.doesNotMatch(text(h.render()), /Old admin result/);
 });
 
 test('paid processing and confirmed orders allow reversal after confirmation and refresh the list', async () => {

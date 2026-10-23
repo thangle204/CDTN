@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import { ordersAPI } from '../utils/api';
 import { productImageUrl } from '../utils/productVariants';
 import { DeliveryReturnSummary } from '../components/DeliveryReturnActions';
+import VnpayPaymentButton from '../components/VnpayPaymentButton';
+import { canPayWithVnpay } from '../utils/vnpay';
 import { FaBox, FaPhone, FaMapMarkerAlt, FaCheckCircle, FaClock, FaTruck, FaTimesCircle } from 'react-icons/fa';
 
 const MyOrders = () => {
@@ -298,13 +300,21 @@ const MyOrders = () => {
                 {typeof order.itemsPrice === 'number' && <div className="mt-4 text-sm text-gray-600 space-y-1"><p>Tiền giày: {order.itemsPrice.toLocaleString('vi-VN')}₫</p><p>Phí vận chuyển: {(order.shippingPrice || 0).toLocaleString('vi-VN')}₫</p>{order.discountAmount > 0 && <p className="text-green-700">Giảm giá: -{order.discountAmount.toLocaleString('vi-VN')}₫</p>}{order.voucher?.code && <p>Voucher: {order.voucher.code}</p>}</div>}
                 <div className="mt-4 p-3 bg-yellow-50 rounded-lg border-l-4 border-yellow-400">
                   <p className="text-sm text-gray-700">
-                    <strong>Phương thức thanh toán:</strong> {order.paymentMethod === 'COD' ? 'Thanh toán khi nhận hàng' : 'Chuyển khoản'}
+                    <strong>Phương thức thanh toán:</strong> {order.paymentMethod === 'COD' ? 'Thanh toán khi nhận hàng' : order.paymentMethod === 'VNPAY' ? 'VNPAY Sandbox (QR / thẻ test)' : 'Chuyển khoản'}
                   </p>
                   <p className="text-sm text-gray-600 mt-1">
                     <strong>Trạng thái thanh toán:</strong> {order.isPaid ? '✓ Đã thanh toán' : '⏳ Chưa thanh toán'}
                   </p>
                   {order.orderStatus === 'Đã hủy' && order.isPaid && <p className="text-sm mt-2 text-blue-800"><strong>Hoàn tiền:</strong> {order.refundStatus === 'refunded' ? 'Cửa hàng đã xác nhận hoàn tiền' : 'Đang chờ cửa hàng xử lý hoàn tiền'}{order.refundedAt && ` (${new Date(order.refundedAt).toLocaleString('vi-VN')})`}</p>}
+                  {order.paymentMethod === 'VNPAY' && order.paymentReviewRequired && <p className="mt-2 text-sm text-amber-900">Cần đối soát khoản thanh toán dư; chưa xác nhận hoàn tiền toàn bộ. Vui lòng liên hệ cửa hàng để được hỗ trợ.</p>}
                 </div>
+
+                {canPayWithVnpay(order) && <VnpayPaymentButton order={order} disabled={canceling} onOrderUpdated={updated => {
+                  if (mounted.current && accountRef.current === user?._id && updated?._id === order._id) {
+                    requestGeneration.current += 1;
+                    setOrders(previous => previous.map(item => item._id === updated._id ? updated : item));
+                  }
+                }} />}
 
                 {/* Actions */}
                 <DeliveryReturnSummary order={order} />

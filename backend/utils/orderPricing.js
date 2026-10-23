@@ -61,7 +61,7 @@ export const validateOrderTransition = (order, nextStatus) => {
   if (!ORDER_TRANSITIONS[order.orderStatus]?.includes(nextStatus)) {
     throw orderError(400, `Không thể chuyển đơn từ "${order.orderStatus}" sang "${nextStatus}"`);
   }
-  if (order.paymentMethod === 'BANK' && !order.isPaid && ['Đang giao', 'Đã giao'].includes(nextStatus)) {
-    throw orderError(400, 'Cần xác nhận đã nhận chuyển khoản trước khi giao hàng');
+  if (['BANK', 'VNPAY'].includes(order.paymentMethod) && !order.isPaid && ['Đang giao', 'Đã giao'].includes(nextStatus)) {
+    throw orderError(400, 'Cần xác nhận đã nhận thanh toán trước khi giao hàng');
   }
 };

@@ -3,6 +3,7 @@
 import './config/env.js';
 import mongoose from 'mongoose';
 import { mongoConnectionOptions } from './config/mongoOptions.js';
+import { formatMongoConnectionError } from './utils/mongoDiagnostics.js';
 
 const checkDatabase = async () => {
   const uri = process.env.MONGO_URI;
@@ -18,13 +19,7 @@ const checkDatabase = async () => {
     console.log('Kết nối MongoDB thành công.');
   } catch (error) {
     process.exitCode = 1;
-    if (error.code === 18 || /bad auth|authentication failed/i.test(error.message)) {
-      console.error('Xác thực MongoDB thất bại. Kiểm tra thông tin tài khoản trong cấu hình.');
-    } else if (/ENOTFOUND|querySrv/i.test(error.message)) {
-      console.error('Không tìm thấy máy chủ MongoDB. Kiểm tra địa chỉ máy chủ và mạng.');
-    } else {
-      console.error('Không kết nối được MongoDB. Kiểm tra cấu hình, mạng và quyền truy cập.');
-    }
+    console.error(formatMongoConnectionError(error));
   } finally {
     try {
       await mongoose.disconnect();

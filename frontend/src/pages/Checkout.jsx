@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { cartAPI, ordersAPI, vouchersAPI } from '../utils/api';
 import { productImageUrl } from '../utils/productVariants';
+import { canPayWithVnpay, vnpaySandboxUrl } from '../utils/vnpay';
+import VnpayPaymentButton from '../components/VnpayPaymentButton';
 import { FaMapMarkerAlt, FaCreditCard, FaShoppingBag, FaCheckCircle, FaTag, FaTimes } from 'react-icons/fa';
 
 const SHIPPING_FEE = 30000;
@@ -25,7 +27,10 @@ const Checkout = () => {
   const [createdOrder, setCreatedOrder] = useState(null);
   const [shippingInfo, setShippingInfo] = useState({ name: '', phone: '', address: '', city: '', district: '', ward: '', notes: '' });
   const [paymentMethod, setPaymentMethod] = useState('COD');
-  const [bankInfo, setBankInfo] = useState({ bankName: '', accountNumber: '', accountHolder: '', transferNote: '' });
+  const mounted = useRef(true);
+  const accountRef = useRef(user?._id);
+  const submitRef = useRef(null);
+  accountRef.current = user?._id;
 
   useEffect(() => {
     if (authLoading) return;
@@ -52,6 +57,18 @@ const Checkout = () => {
     return () => { active = false; };
   }, [user, authLoading, navigate]);
 
+  useEffect(() => {
+    mounted.current = true;
+    setSubmitting(false);
+    setCreatedOrder(null);
+    setStep(1);
+    return () => {
+      mounted.current = false;
+      submitRef.current?.controller.abort();
+      submitRef.current = null;
+    };
+  }, [user?._id]);
+
   const subtotal = cartItems.reduce((total, item) => total + Number(item.product?.price ?? item.price) * item.quantity, 0);
   const totals = quote || { itemsPrice: subtotal, shippingPrice: SHIPPING_FEE, discountAmount: 0, totalPrice: subtotal + SHIPPING_FEE };
   const address = [shippingInfo.address, shippingInfo.ward, shippingInfo.district, shippingInfo.city].filter(Boolean).join(', ');
@@ -73,7 +90,10 @@ const Checkout = () => {
   };
 
   const submitOrder = async () => {
-    if (submitting || applyingVoucher || !cartItems.length) return;
+    if (submitting || submitRef.current || applyingVoucher || !cartItems.length) return;
+    const operation = { account: user?._id, controller: new AbortController() };
+    submitRef.current = operation;
+    const active = () => mounted.current && submitRef.current === operation && accountRef.current === operation.account;
     setSubmitting(true);
     setError('');
     try {
@@ -88,11 +108,20 @@ const Checkout = () => {
           size: item.size ?? null,
           quantity: item.quantity,
         })),
-        bankTransferInfo: paymentMethod === 'BANK' ? bankInfo : undefined,
       });
+      if (!active()) return;
       setCreatedOrder(data);
       setStep(3);
+      if (canPayWithVnpay(data)) {
+        try {
+          const payment = await ordersAPI.createVnpayPayment(data._id, { signal: operation.controller.signal });
+          if (active()) window.location.assign(vnpaySandboxUrl(payment.data.paymentUrl));
+        } catch (failure) {
+          if (active()) setError('Đơn hàng đã được tạo. ' + (failure.response?.data?.message || failure.message || 'Chưa mở được VNPAY. Bạn có thể thanh toán lại bên dưới hoặc trong Đơn hàng của tôi.'));
+        }
+      }
     } catch (failure) {
+      if (!active()) return;
       const message = failure.response?.data?.message || 'Đặt hàng thất bại. Vui lòng thử lại.';
       setError(message);
       if (failure.response?.status === 409) {
@@ -104,15 +133,16 @@ const Checkout = () => {
         setLoading(true);
         try {
           const { data } = await cartAPI.getCart();
-          setCartItems(data);
+          if (active()) setCartItems(data);
         } catch {
-          setError(message + ' Không thể tải lại giỏ hàng. Vui lòng quay lại giỏ và thử lại.');
+          if (active()) setError(message + ' Không thể tải lại giỏ hàng. Vui lòng quay lại giỏ và thử lại.');
         } finally {
-          setLoading(false);
+          if (active()) setLoading(false);
         }
       }
     } finally {
-      setSubmitting(false);
+      if (active()) setSubmitting(false);
+      if (submitRef.current === operation) submitRef.current = null;
     }
   };
 
@@ -134,7 +164,9 @@ const Checkout = () => {
         <p className="text-gray-600 mb-6">Cảm ơn bạn đã mua sắm tại SHOE STORE.</p>
         <p className="mb-2">Mã đơn: <strong>#{createdOrder._id.slice(-8)}</strong></p>
         <p className="text-2xl text-red-600 font-bold mb-4">{money(createdOrder.totalPrice)}</p>
-        <p className="text-gray-600 mb-6">{paymentMethod === 'BANK' ? 'Đơn hàng đang chờ đối chiếu chuyển khoản. Cửa hàng sẽ xác nhận thanh toán sau.' : 'Bạn sẽ thanh toán khi nhận giày.'}</p>
+        <p className="text-gray-600 mb-6">{createdOrder.paymentMethod === 'VNPAY' ? createdOrder.isPaid ? 'Hệ thống đã xác nhận thanh toán VNPAY.' : 'Đơn hàng đã được tạo và đang chờ thanh toán VNPAY Sandbox.' : 'Bạn sẽ thanh toán khi nhận giày.'}</p>
+        {error && <p role="alert" className="mb-4 rounded-lg bg-red-50 p-4 text-red-700">{error}</p>}
+        {canPayWithVnpay(createdOrder) && <VnpayPaymentButton order={createdOrder} disabled={submitting} onOrderUpdated={setCreatedOrder} />}
         <Link to="/my-orders" className="inline-block bg-red-600 text-white px-6 py-3 rounded-lg font-semibold">Xem đơn hàng</Link>
         <Link to="/products" className="block text-red-600 mt-4 hover:underline">Tiếp tục chọn giày</Link>
       </div>
@@ -168,26 +200,17 @@ const Checkout = () => {
                 </section>
                 <section className="bg-white rounded-lg shadow p-6">
                   <h2 className="text-xl font-bold mb-5 flex items-center gap-2"><FaCreditCard className="text-red-600" />Phương thức thanh toán</h2>
-                  {[['COD', 'Thanh toán khi nhận giày (COD)'], ['BANK', 'Chuyển khoản ngân hàng']].map(([value, label]) => (
+                  {[['COD', 'Thanh toán khi nhận giày (COD)'], ['VNPAY', 'VNPAY Sandbox (QR / thẻ test)']].map(([value, label]) => (
                     <label key={value} className="flex items-center gap-3 border rounded-lg p-4 mb-3 cursor-pointer"><input type="radio" name="paymentMethod" value={value} checked={paymentMethod === value} onChange={() => setPaymentMethod(value)} />{label}</label>
                   ))}
-                  {paymentMethod === 'BANK' && (
-                    <div className="p-4 rounded-lg bg-blue-50 mt-4">
-                      <p className="text-sm text-blue-900 mb-4">Thông tin người chuyển khoản giúp cửa hàng đối chiếu giao dịch. Cửa hàng sẽ liên hệ xác nhận thông tin nhận tiền. Đơn chỉ được ghi nhận đã thanh toán sau khi đối chiếu.</p>
-                      <div className="grid md:grid-cols-2 gap-4">
-                        {[['bankName', 'Ngân hàng'], ['accountHolder', 'Tên người chuyển khoản'], ['accountNumber', 'Số tài khoản người chuyển'], ['transferNote', 'Nội dung chuyển khoản']].map(([name, label]) => (
-                          <label key={name} className="text-sm font-medium">{label}<input maxLength={name === 'accountNumber' ? 50 : name === 'transferNote' ? 500 : 120} value={bankInfo[name]} onChange={event => setBankInfo({ ...bankInfo, [name]: event.target.value })} className={inputClass + ' mt-2'} /></label>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  {paymentMethod === 'VNPAY' && <p className="rounded-lg bg-blue-50 p-4 text-blue-900">Sau khi đặt hàng, bạn sẽ được chuyển đến VNPAY Sandbox để chọn QR hoặc thẻ test. Đây là môi trường thử nghiệm; trạng thái thanh toán được cập nhật tự động từ VNPAY.</p>}
                 </section>
                 <button type="submit" disabled={applyingVoucher} className="w-full bg-red-600 text-white py-3 rounded-lg font-semibold disabled:opacity-50">Tiếp tục xác nhận</button>
               </form>
             ) : (
               <section className="bg-white rounded-lg shadow p-6">
                 <h2 className="text-xl font-bold mb-5 flex items-center gap-2"><FaShoppingBag className="text-red-600" />Xác nhận đơn giày</h2>
-                <div className="bg-gray-50 p-4 rounded-lg mb-5 space-y-2"><p className="font-semibold">{shippingInfo.name} · {shippingInfo.phone}</p><p>{address}</p>{shippingInfo.notes && <p className="text-gray-600">Ghi chú: {shippingInfo.notes}</p>}<p className="text-sm">Thanh toán: {paymentMethod === 'COD' ? 'Khi nhận hàng' : 'Chuyển khoản, chờ đối chiếu'}</p></div>
+                <div className="bg-gray-50 p-4 rounded-lg mb-5 space-y-2"><p className="font-semibold">{shippingInfo.name} · {shippingInfo.phone}</p><p>{address}</p>{shippingInfo.notes && <p className="text-gray-600">Ghi chú: {shippingInfo.notes}</p>}<p className="text-sm">Thanh toán: {paymentMethod === 'COD' ? 'Khi nhận hàng' : 'VNPAY Sandbox (QR / thẻ test)'}</p></div>
                 <div className="divide-y">
                   {cartItems.map(item => (
                     <div key={item._id} className="flex gap-4 py-4">

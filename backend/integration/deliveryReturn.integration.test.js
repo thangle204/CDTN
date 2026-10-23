@@ -30,11 +30,15 @@ test('failed deliveries and inspected physical returns with real HTTP and owned 
       token, body: { productId: String(product._id), quantity: 4, color: 'Trắng', size: 40 },
     }), 201);
     const order = checked(await ctx.request('POST', '/api/orders', {
-      token, body: { expectedCart: cart, shippingAddress, paymentMethod, voucherCode: voucher.code, expectedTotalPrice: 780000 },
+      token, body: { expectedCart: cart, shippingAddress, paymentMethod: 'COD', voucherCode: voucher.code, expectedTotalPrice: 780000 },
     }), 201);
-    if (paymentMethod === 'BANK') checked(await ctx.request('PUT', `/api/orders/${order._id}/payment`, {
-      token: adminToken, body: { isPaid: true },
-    }), 200);
+    if (paymentMethod === 'BANK') {
+      // Seed a historical BANK order in the isolated test database; new checkout accepts only COD/VNPAY.
+      await Order.updateOne({ _id: order._id }, { $set: { paymentMethod: 'BANK' } });
+      checked(await ctx.request('PUT', `/api/orders/${order._id}/payment`, {
+        token: adminToken, body: { isPaid: true },
+      }), 200);
+    }
     for (const orderStatus of ['Đã xác nhận', 'Đang giao']) checked(await ctx.request('PUT', `/api/orders/${order._id}/status`, {
       token: adminToken, body: { orderStatus },
     }), 200);

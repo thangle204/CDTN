@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { ordersAPI } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 import DeliveryReturnActions, { canConfirmOrderRefund, isDeliveryReturnOrder } from './DeliveryReturnActions';
 import { FaBox, FaPhone, FaMapMarkerAlt, FaEdit, FaSearch, FaMoneyBillWave } from 'react-icons/fa';
 
@@ -12,13 +13,21 @@ const statusTransitions = {
 };
 
 const getAllowedStatuses = (order) => (order.cancellationLock || order.deliveryReturn?.state === 'processing' ? [] : statusTransitions[order.orderStatus || 'Đang xử lý'] || [])
-  .filter(status => !(order.paymentMethod === 'BANK' && !order.isPaid && ['Đang giao', 'Đã giao'].includes(status)));
+  .filter(status => !(['BANK', 'VNPAY'].includes(order.paymentMethod) && !order.isPaid && ['Đang giao', 'Đã giao'].includes(status)));
 
 const canUpdatePayment = (order, isPaid) => Boolean(order)
+  && order.paymentMethod !== 'VNPAY'
   && order.orderStatus !== 'Đã hủy' && !isDeliveryReturnOrder(order) && !order.cancellationLock
   && (isPaid || !['Đang giao', 'Đã giao'].includes(order.orderStatus));
 
+const reconciliationAttempts = order => (order?.vnpayPayments || []).filter(payment => payment.state !== 'succeeded' && typeof payment.txnRef === 'string' && payment.txnRef);
+
+const canReconcileVnpay = order => order?.paymentMethod === 'VNPAY' && !order.isPaid
+  && order.checkoutFinalized !== false && !order.cancellationLock && order.deliveryReturn?.state !== 'processing'
+  && reconciliationAttempts(order).length > 0;
+
 const AdminOrders = () => {
+  const { user, loading: authLoading } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all');
@@ -27,11 +36,31 @@ const AdminOrders = () => {
   const [newStatus, setNewStatus] = useState('');
   const [error, setError] = useState('');
   const [actionId, setActionId] = useState(null);
+  const [reconcileMessage, setReconcileMessage] = useState(null);
+  const [reconcileReferences, setReconcileReferences] = useState({});
   const mounted = useRef(true);
   const requestGeneration = useRef(0);
   const actionRef = useRef(null);
   const ordersRef = useRef(orders);
+  const reconciliationRef = useRef(null);
+  const accountRef = useRef(user?._id);
+  accountRef.current = user?._id;
   ordersRef.current = orders;
+
+  useEffect(() => {
+    setReconcileMessage(null);
+    setReconcileReferences({});
+    setActionId(null);
+    return () => {
+      const operation = reconciliationRef.current;
+      if (operation) {
+        operation.controller.abort();
+        reconciliationRef.current = null;
+        actionRef.current = null;
+        requestGeneration.current += 1;
+      }
+    };
+  }, [user?._id]);
 
   useEffect(() => {
     mounted.current = true;
@@ -109,6 +138,33 @@ const AdminOrders = () => {
       alert('❌ Lỗi: ' + (error.response?.data?.message || error.message));
     } finally {
       endAction();
+    }
+  };
+
+  const handleReconcileVnpay = async orderId => {
+    const order = ordersRef.current.find(item => item._id === orderId);
+    const attempts = reconciliationAttempts(order);
+    const txnRef = attempts.length === 1 ? attempts[0].txnRef : reconcileReferences[orderId];
+    if (authLoading || !user?.isAdmin || !canReconcileVnpay(order) || !attempts.some(attempt => attempt.txnRef === txnRef) || !beginAction(orderId)) return;
+    const operation = { account: user._id, controller: new AbortController() };
+    reconciliationRef.current = operation;
+    const active = () => mounted.current && reconciliationRef.current === operation
+      && accountRef.current === operation.account && actionRef.current === orderId;
+    setError('');
+    setReconcileMessage(null);
+    try {
+      const { data } = await ordersAPI.reconcileVnpayPayment(orderId, { signal: operation.controller.signal, txnRef });
+      if (!active()) return;
+      if (data?.order?._id !== orderId) throw new Error('Kết quả đối chiếu chưa hợp lệ. Vui lòng thử lại.');
+      setReconcileMessage({ orderId, text: data.message || 'Đã đối chiếu trạng thái thanh toán với VNPAY.' });
+      await fetchOrders();
+    } catch (failure) {
+      if (active()) setError(failure.response?.data?.message || failure.message || 'Chưa đối chiếu được với VNPAY. Vui lòng thử lại sau.');
+    } finally {
+      if (reconciliationRef.current === operation) {
+        reconciliationRef.current = null;
+        endAction();
+      }
     }
   };
 
@@ -366,12 +422,13 @@ const AdminOrders = () => {
                 <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm text-gray-700">
-                      <strong>Thanh toán:</strong> {order.paymentMethod === 'COD' ? 'Thanh toán khi nhận hàng (COD)' : order.paymentMethod === 'BANK' ? 'Chuyển khoản ngân hàng' : order.paymentMethod}
+                      <strong>Thanh toán:</strong> {order.paymentMethod === 'COD' ? 'Thanh toán khi nhận hàng (COD)' : order.paymentMethod === 'BANK' ? 'Chuyển khoản ngân hàng' : order.paymentMethod === 'VNPAY' ? 'VNPAY Sandbox (QR / thẻ test)' : order.paymentMethod}
                     </p>
                     <p className={`text-sm font-semibold mt-1 ${order.isPaid ? 'text-green-700' : 'text-red-700'}`}>
-                      {order.isPaid ? '✅ Đã thanh toán' : order.paymentMethod === 'BANK' ? '⏳ Chờ xác nhận chuyển khoản' : '⏳ Chưa thanh toán'}
+                      {order.isPaid ? '✅ Đã thanh toán' : order.paymentMethod === 'BANK' ? '⏳ Chờ xác nhận chuyển khoản' : order.paymentMethod === 'VNPAY' ? '⏳ Chờ kết quả từ VNPAY' : '⏳ Chưa thanh toán'}
                     </p>
                     {order.paymentMethod === 'BANK' && !order.isPaid && order.orderStatus !== 'Đã hủy' && !isDeliveryReturnOrder(order) && <p className="mt-1 text-xs text-gray-600">Xác nhận đã nhận tiền trước khi chuyển sang giao hàng.</p>}
+                    {order.paymentMethod === 'VNPAY' && <p className="mt-1 text-xs text-gray-600">Thanh toán được xác nhận tự động từ VNPAY. Đơn chưa thanh toán không được chuyển sang giao hàng.</p>}
                   </div>
                   
                   {canUpdatePayment(order, !order.isPaid) && <button
@@ -388,6 +445,20 @@ const AdminOrders = () => {
                     {order.isPaid ? 'Hủy xác nhận' : 'Xác nhận đã TT'}
                   </button>}
                 </div>
+                {order.paymentMethod === 'VNPAY' && <div className="mt-3 space-y-2 border-t border-yellow-200 pt-3 text-sm">
+                  {canReconcileVnpay(order) && user?.isAdmin && !authLoading && <div className="space-y-2">
+                    {reconciliationAttempts(order).length > 1 && <label className="block font-medium text-gray-700">Giao dịch cần đối chiếu
+                      <select aria-label="Giao dịch cần đối chiếu" value={reconcileReferences[order._id] || ''} disabled={actionId !== null} onChange={event => setReconcileReferences(previous => ({ ...previous, [order._id]: event.target.value }))} className="mt-1 block w-full rounded border border-gray-300 p-2 font-normal">
+                        <option value="">Chọn mã tham chiếu VNPAY</option>
+                        {reconciliationAttempts(order).map(payment => <option key={payment.txnRef} value={payment.txnRef}>{payment.txnRef}</option>)}
+                      </select>
+                    </label>}
+                    <button type="button" disabled={actionId !== null || reconciliationAttempts(order).length > 1 && !reconciliationAttempts(order).some(payment => payment.txnRef === reconcileReferences[order._id])} onClick={() => handleReconcileVnpay(order._id)} className="rounded-lg border border-blue-700 px-4 py-2 font-semibold text-blue-700 disabled:opacity-50">{actionId === order._id ? 'Đang đối chiếu...' : 'Đối chiếu với VNPAY'}</button>
+                  </div>}
+                  {reconcileMessage?.orderId === order._id && <p role="status" className="rounded bg-blue-50 p-3 text-blue-800">{reconcileMessage.text}</p>}
+                  {order.paymentReviewRequired && <p role="alert" className="rounded bg-red-100 p-3 font-semibold text-red-800">Có nhiều giao dịch thành công. Cần đối soát và xử lý khoản thanh toán dư; chưa xác nhận hoàn tiền toàn bộ.</p>}
+                  {(order.vnpayPayments || []).filter(payment => payment.transactionNo).map(payment => <p key={payment.txnRef} className="break-words text-gray-700">Giao dịch Sandbox: <strong>{payment.transactionNo}</strong>{payment.bankCode && ` · ${payment.bankCode}`}{payment.overpayment && ' · Cần đối soát khoản dư'}</p>)}
+                </div>}
                 
                 {order.bankTransferInfo && (
                   <div className="mt-3 pt-3 border-t border-yellow-200">

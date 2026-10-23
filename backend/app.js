@@ -6,12 +6,17 @@ import customerRoutes from './routes/customerRoutes.js';
 import staffRoutes from './routes/staffRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import voucherRoutes from './routes/voucherRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
 import { requireDatabase } from './middleware/authMiddleware.js';
 import { serveProductImages } from './controllers/uploadController.js';
+import { DEV_WORKSPACE_HEADER, devWorkspaceId } from './utils/devWorkspace.js';
 
 export const createApp = () => {
   const app = express();
   app.disable('x-powered-by');
+  if (process.env.NODE_ENV !== 'production') {
+    app.use((req, res, next) => { res.set(DEV_WORKSPACE_HEADER, devWorkspaceId); next(); });
+  }
   app.use(cors({
     origin: process.env.FRONTEND_URL || 'http://localhost:5173',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -30,6 +35,7 @@ export const createApp = () => {
     databaseConnected: mongoose.connection.readyState === 1,
   }));
   app.use('/api/products', productRoutes);
+  app.use('/api/payments', paymentRoutes);
   app.use('/api/customers', requireDatabase, customerRoutes);
   app.use('/api/staff', requireDatabase, staffRoutes);
   app.use('/api/orders', requireDatabase, orderRoutes);

@@ -35,7 +35,7 @@ const fixture = async (ctx, { legacy = false } = {}) => {
     token, body: { productId: String(product._id), quantity: 1, size: 40, ...(legacy ? {} : { color: 'Trắng' }) },
   }), 201);
   const place = () => ctx.request('POST', '/api/orders', {
-    token, body: { expectedCart: cart, shippingAddress, paymentMethod: 'BANK', expectedTotalPrice: product.price + 30000 },
+    token, body: { expectedCart: cart, shippingAddress, paymentMethod: 'COD', expectedTotalPrice: product.price + 30000 },
   });
   return { buyer, token, product, cart, place };
 };

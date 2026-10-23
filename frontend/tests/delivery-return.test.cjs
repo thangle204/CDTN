@@ -168,7 +168,7 @@ test('admin allows manual refund only after completed positive paid settlement',
   const order = orderOf({ orderStatus: 'Đã xử lý hoàn hàng', isPaid: true, refundStatus: 'pending', deliveryReturn: { state: 'completed', refundAmount: 180000 } });
   const h = setup('Admin', {}, [[order], false]); await h.button('Xác nhận đã hoàn tiền').props.onClick();
   assert.deepEqual(h.calls.map(call => call.name), ['confirmRefund', 'getAllOrders']);
-  for (const changes of [{ isPaid: false }, { deliveryReturn: { state: 'completed', refundAmount: 0 } }, { deliveryReturn: { state: 'processing', refundAmount: 180000 } }]) {
+  for (const changes of [{ isPaid: false }, { paymentReviewRequired: true }, { deliveryReturn: { state: 'completed', refundAmount: 0 } }, { deliveryReturn: { state: 'processing', refundAmount: 180000 } }]) {
     const invalid = setup('Admin', {}, [[{ ...order, ...changes }], false]); assert.equal(nodes(invalid.render()).filter(node => node.type === 'button' && text(node).includes('Xác nhận đã hoàn tiền')).length, 0);
   }
 });

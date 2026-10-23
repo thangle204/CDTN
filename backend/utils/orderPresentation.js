@@ -3,6 +3,7 @@ export const publicOrder = (order) => {
   delete result.cancellationLock;
   delete result.checkoutToken;
   delete result.checkoutState;
+  delete result.vnpayQueryNextAt;
   if (result.deliveryReturn) {
     result.deliveryReturn = { ...result.deliveryReturn };
     delete result.deliveryReturn.token;
@@ -13,6 +14,7 @@ export const publicOrder = (order) => {
 
 export const publicCustomerOrder = (order) => {
   const result = publicOrder(order);
+  delete result.vnpayPayments;
   if (result.deliveryFailure) {
     result.deliveryFailure = { ...result.deliveryFailure };
     delete result.deliveryFailure.notes;

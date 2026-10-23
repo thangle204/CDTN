@@ -87,7 +87,7 @@ const product = {_id:'shoe-1', name:'Sneaker', price:100000, countInStock:10, si
 const item = {_id:'cart-1',product,size:40,price:100000,quantity:2};
 const reviewStates = selected => [product,false,2,selected,'','',false,[{_id:'review-1',name:'Customer',rating:5,comment:'Great',createdAt:'2026-10-12'}],'',false,{rating:5,comment:'Great'},false];
 const shipping = {name:' Customer ',phone:'0901234567',address:' Street ',city:' City ',district:' District ',ward:' Ward ',notes:' Note '};
-const checkoutStates = (quote=null, step=2) => [[item],false,false,step,'',[],'',quote,'',false,null,shipping,'BANK',{bankName:'Bank',accountNumber:'123456',accountHolder:'Customer',transferNote:'SHOE STORE'}];
+const checkoutStates = (quote=null, step=2) => [[item],false,false,step,'',[],'',quote,'',false,null,shipping,'COD'];
 let assertions = 0;
 const test = async (name, action) => { await action(); assertions++; console.log('PASS ' + name); };
 (async () => {
@@ -152,6 +152,20 @@ const test = async (name, action) => { await action(); assertions++; console.log
     h.effects.forEach(effect => effect());
     assert.deepEqual(h.navigation[0],['/login',{replace:true,state:{from:'/checkout'}}]);
   });
+  await test('checkout offers only COD and VNPAY without bank transfer fields', async () => {
+    const h = setup(checkoutStates(null, 1));
+    let tree = components.Checkout();
+    const methods = allNodes(tree).filter(node => node.type === 'input' && node.props.name === 'paymentMethod');
+    assert.deepEqual(methods.map(node => node.props.value), ['COD', 'VNPAY']);
+    assert.equal(methods[0].props.checked, true);
+    assert(!textOf(tree).includes('Chuyển khoản ngân hàng'));
+    assert(!textOf(tree).includes('Số tài khoản người chuyển'));
+    methods[1].props.onChange();
+    h.cursor = 0;
+    tree = components.Checkout();
+    assert(allNodes(tree).some(node => node.type === 'input' && node.props.value === 'VNPAY' && node.props.checked));
+    assert(textOf(tree).includes('chuyển đến VNPAY Sandbox'));
+  });
   await test('order sends full shipping and server authoritative pricing', async () => {
     const h = setup(checkoutStates({voucher:{code:'SHIP'},itemsPrice:200000,shippingPrice:0,discountAmount:0,totalPrice:200000}));
     h.request = async (name,args) => { h.calls.push({name,args}); return {data:{_id:'order-1',totalPrice:200000}}; };
@@ -163,6 +177,8 @@ const test = async (name, action) => { await action(); assertions++; console.log
     assert.equal(payload.shippingAddress.ward,'Ward');
     assert.equal(payload.shippingAddress.notes,'Note');
     assert.equal(payload.expectedTotalPrice,200000);
+    assert.equal(payload.paymentMethod,'COD');
+    assert(!('bankTransferInfo' in payload));
     assert.deepEqual(payload.expectedCart,[{product:'shoe-1',color:'',size:40,quantity:2}]);
     for (const key of ['totalPrice','discountAmount','isPaid','orderItems']) assert(!(key in payload));
     assert.equal(h.values[3],3);

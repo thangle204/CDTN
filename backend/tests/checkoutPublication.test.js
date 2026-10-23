@@ -156,7 +156,7 @@ const setup = (t, options = {}) => {
     const result = await fetch(baseUrl + path, { method, headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
     return { status: result.status, body: await result.json() };
   };
-  const checkoutRequest = { accountType: 'customer', user: { _id: ownerId, authVersion: 0, isAdmin: false }, body: { paymentMethod: 'BANK', shippingAddress, expectedTotalPrice: 230000, expectedCart: [{ product: String(productId), color: 'Trắng', size: 40, quantity: 1 }] } };
+  const checkoutRequest = { accountType: 'customer', user: { _id: ownerId, authVersion: 0, isAdmin: false }, body: { paymentMethod: 'COD', shippingAddress, expectedTotalPrice: 230000, expectedCart: [{ product: String(productId), color: 'Trắng', size: 40, quantity: 1 }] } };
   return { product, customer, originalCart, orders, hooks, events, deleted, releases: () => releases, request, checkoutRequest };
 };
 

@@ -1,6 +1,6 @@
 # SHOE STORE
 
-Website bán giày với React/Vite, Express và MongoDB/Mongoose. Khách hàng có thể tìm giày, chọn size, quản lý giỏ, đặt hàng COD/chuyển khoản, theo dõi đơn và đánh giá sản phẩm sau khi nhận hàng. Quản trị viên quản lý sản phẩm, đơn hàng, tài khoản, voucher và doanh thu.
+Website bán giày với React/Vite, Express và MongoDB/Mongoose. Khách hàng có thể tìm giày, chọn size, quản lý giỏ, đặt hàng COD/VNPAY Sandbox, theo dõi đơn và đánh giá sản phẩm sau khi nhận hàng. Quản trị viên quản lý sản phẩm, đơn hàng, tài khoản, voucher và doanh thu.
 
 Trang chủ và trang sản phẩm dùng giao diện catalog với bộ lọc thương hiệu, màu, size, giá và còn hàng; lưới 4 cột trên màn hình lớn, 2 cột trên điện thoại. Có sắp xếp, phân trang và giữ lựa chọn trên URL. Xem [README frontend](frontend/README.md) để chỉnh giao diện. Đợt thiết kế lại ngày 15/10/2026 đạt 114 kiểm tra frontend, build và 12 luồng trên Chrome với dữ liệu mẫu riêng; không thay đổi dữ liệu cửa hàng.
 
@@ -17,6 +17,12 @@ Dùng backend/.env.example làm mẫu cấu hình backend/.env. Giữ nguyên fi
 
 Frontend: http://localhost:5173. API: http://localhost:5000/api. Có thể chạy riêng bằng npm run server và npm run client.
 
+`npm run dev` nhận diện dịch vụ đã chạy từ đúng thư mục dự án và chỉ bật dịch vụ còn thiếu. Khi `VNPAY_ENABLED=true`, lệnh cũng chạy cổng IPN; `npm run dev:vnpay` luôn yêu cầu cổng này. Chạy lại lệnh khi dự án đã hoạt động sẽ in địa chỉ website và thoát, không tạo thêm backend/frontend trùng cổng.
+
+Nếu cổng thuộc chương trình hoặc bản dự án khác, lệnh báo rõ cổng bị chiếm và không tự dừng tiến trình đó. Dừng bản trước bằng **Ctrl+C** trong terminal đã chạy nó rồi thử lại. Nếu một dịch vụ mới khởi động bị lỗi, các dịch vụ cùng lần khởi động được dừng để tránh sót tiến trình. Các dịch vụ được dùng lại từ lần chạy trước vẫn tiếp tục hoạt động.
+
+Kiểm tra sửa lỗi chạy trùng ngày 23/10/2026: **317/317 backend đạt**, build frontend thành công. Đã kiểm tra khởi động khi các cổng trống và gọi lại `npm run dev` khi API/frontend/IPN đang chạy, gồm frontend chỉ nghe IPv6 và IPN chỉ nghe IPv4.
+
 Frontend mặc định gọi /api qua Vite proxy. Nếu đổi cổng backend, cấu hình API_PROXY_TARGET trong frontend/.env.local. Khi triển khai ở hai tên miền khác nhau, đặt VITE_API_URL thành URL API đầy đủ và FRONTEND_URL thành origin frontend. VITE_* được công khai trong bản build, chỉ chứa địa chỉ API.
 
 ## Kiểm tra và build
@@ -25,8 +31,46 @@ Frontend mặc định gọi /api qua Vite proxy. Nếu đổi cổng backend, c
     npm run test:frontend
     npm run build
     npm run check:db
+    npm run check:vnpay
 
 npm test chạy kiểm tra backend bằng Node test runner, mocks và HTTP cục bộ. npm run test:frontend kiểm tra cú pháp, bindings và các luồng giao diện bằng API/hooks giả lập. Cả hai không cần MongoDB và không sửa dữ liệu thật. check:db là lệnh kiểm tra kết nối MongoDB thật theo cấu hình; trả mã lỗi khác 0 nếu kết nối thất bại.
+
+### Thanh toán VNPAY QR Sandbox
+
+Đã thêm lựa chọn **VNPAY Sandbox (QR / thẻ test)** ở checkout và nút thanh toán tiếp trong **Đơn hàng của tôi**. Backend tạo link từ số tiền đơn đã lưu, xác thực chữ ký IPN rồi tự ghi nhận thanh toán. Return URL chỉ đọc và hiển thị kết quả, không ghi thanh toán. Khi đang chờ, trang tự kiểm tra trạng thái đã lưu mỗi 3 giây, tối đa 20 lần hoặc 60 giây; các lần đọc này không gọi API truy vấn VNPAY. Đơn chưa được xác nhận trả tiền bị chặn giao hàng.
+
+Nếu mất IPN, khách bấm **Đối chiếu với VNPAY** trong đơn hàng hoặc trên trang kết quả đang chờ; admin có nút này trong **Quản trị → Đơn hàng**. Backend gọi API QueryDR có chữ ký từ máy chủ, kiểm tra đúng merchant, mã tham chiếu và số tiền trước khi ghi nhận. Nếu đơn có nhiều lần thanh toán chưa xác nhận, admin phải chọn đúng mã tham chiếu. Mỗi đơn được đối chiếu tối đa một lần trong 5 phút, kể cả lần trước bị timeout. Return vẫn là GET chỉ đọc; đối chiếu là POST riêng có đăng nhập và quyền chủ đơn/admin. Không cần thanh toán lại để khắc phục mất IPN.
+
+Làm theo [hướng dẫn VNPAY Sandbox](VNPAY_SANDBOX.md) để đăng ký merchant, điền cấu hình và thử QR/thẻ NCB. Cần merchant Sandbox riêng, URL IPN HTTPS công khai được đăng ký với VNPAY và MongoDB đang kết nối. `npm run check:vnpay` kiểm tra cấu hình cục bộ; chưa thay thế giao dịch thử trên cổng.
+
+Kiểm tra ngày **23/10/2026** sau bổ sung QueryDR và cấu hình DNS: **310 backend, 165 frontend đạt (20 luồng và 145 ca Node); build thành công**. Các ca VNPAY dùng dữ liệu/callback/phản hồi truy vấn giả có chữ ký và HTTP cục bộ, bao gồm cổng nhận IPN riêng **5010**, trang chờ xác nhận và đối chiếu thủ công. Trong SIT, cấu hình qua **Cấu hình IPN URL → Sửa → Cập nhật**; đường dẫn và URL đã được đối chiếu từ ảnh người dùng.
+
+Lịch sử kiểm tra đường nhận IPN cùng ngày: frontend tại `http://localhost:5173`, API kết nối MongoDB và cổng nhận IPN 5010 hoạt động trong lần kiểm tra trước. Sau khi người dùng thêm ngoại lệ Avast cho `https://connect.ngrok-agent.com`, tunnel đã online tại `https://gawk-luckiness-unjustly.ngrok-free.dev`, chuyển về `http://127.0.0.1:5010`; xác minh TLS và ghim CA mặc định được giữ nguyên. Yêu cầu HTTPS thông thường từ bên ngoài, không có header bỏ qua cảnh báo ngrok, nhận HTTP 200/`RspCode: "97"` khi gọi IPN không có chữ ký; các đường dẫn `/api/customers/profile`, `/api/orders`, `/api/products` đều trả 404. Cần kiểm tra lại kết nối MongoDB bằng `npm run check:db` và `/api/test` ở lần chạy hiện tại.
+
+Đã truy vấn QueryDR thật cho đúng yêu cầu của đơn đuôi `e8d367e6`: VNPAY trả HTTP 200, chữ ký hợp lệ, đúng merchant/mã tham chiếu/số tiền **3.000.000đ**, mã giao dịch **15712390**, loại thanh toán `01`, mã truy vấn và trạng thái đều `00`. Phép kiểm tra chỉ đọc không cập nhật MongoDB; bước ghi nhận đơn cần thực hiện bằng nút **Đối chiếu với VNPAY** với tài khoản chủ đơn hoặc admin. Không cần thanh toán lại. Xem [hướng dẫn đối chiếu khi mất IPN](VNPAY_SANDBOX.md#đối-chiếu-thủ-công-khi-mất-ipn). API hoàn tiền VNPAY chưa được tích hợp; nút hoàn tiền chỉ ghi nhận khoản đã xử lý bên ngoài.
+
+### Khi đăng nhập báo chưa kết nối cơ sở dữ liệu
+
+`npm run check:db` mở một kết nối riêng để kiểm tra rồi đóng lại; lệnh này không khởi động hoặc thay đổi kết nối của API đang chạy. Kiểm tra API thực tế tại `http://localhost:5000/api/test`: `databaseConnected` phải là `true`. Sau khi đổi `.env`, khởi động lại API. API hiện tự thử lại khi lần kết nối đầu thất bại, với khoảng chờ tăng từ 1 đến tối đa 30 giây; sau khi đã kết nối, MongoDB driver phụ trách kết nối lại.
+
+Ngày 23/10/2026, DNS mặc định tra SRV MongoDB bị timeout, trong khi 1.1.1.1 và 8.8.8.8 đều trả đủ ba máy chủ. Đã thêm tùy chọn `MONGO_DNS_SERVERS=1.1.1.1,8.8.8.8` trong backend/.env và khởi động lại: API trả `databaseConnected: true`. Tùy chọn này chỉ cấu hình các phép `resolve*` trong tiến trình Node, gồm SRV/TXT; không đổi DNS Windows. Để trống để dùng DNS mặc định; tối đa ba địa chỉ IP phân cách bằng dấu phẩy.
+
+Backend và `check:db` phân loại lỗi bằng thông báo cố định, không in URI, mật khẩu hoặc hostname trong lỗi gốc:
+
+| Lỗi | Cách kiểm tra |
+| --- | --- |
+| DNS (`ENOTFOUND`, `EAI_AGAIN`, timeout truy vấn DNS) | Đối chiếu địa chỉ cluster trong Atlas và khả năng phân giải DNS của mạng đang dùng. |
+| Xác thực (`18`) | Kiểm tra **Database User**, mật khẩu và `authSource`; tài khoản đăng nhập website là tài khoản khác. |
+| Chứng chỉ TLS | Kiểm tra ngày giờ máy, CA tin cậy và phần mềm kiểm tra kết nối HTTPS/TLS. |
+| Ngắt trước bắt tay TLS (`ECONNRESET_BEFORE_TLS`) | Kết nối bị ngắt trước bước xác thực tài khoản. Đối chiếu mạng khác/Compass, trạng thái cluster và phần mềm kiểm tra TLS. |
+| Kết nối bị ngắt (`ECONNRESET`) | Kiểm tra IP Access List của đúng project/cluster và đường mạng. Mã này không tự chứng minh sai mật khẩu hoặc thiếu IP. |
+| Hết thời gian chọn máy chủ | Kiểm tra trạng thái cluster, quyền truy cập IP và khả năng kết nối đến cổng MongoDB; không kết luận nguyên nhân chỉ từ timeout. |
+
+Nếu IP hiện tại đã **Active** nhưng vẫn bị ngắt, thử mạng Wi-Fi phát từ điện thoại, cập nhật IP của mạng mới trong Atlas rồi chạy lại `npm run check:db`. Có thể đối chiếu cùng URI bằng MongoDB Compass trên máy; chỉ dán URI trong ứng dụng của bạn. Tham khảo [hướng dẫn xử lý kết nối Atlas](https://www.mongodb.com/docs/atlas/troubleshoot-connection/) và [quản lý IP Access List](https://www.mongodb.com/docs/atlas/security/ip-access-list/).
+
+Kiểm tra ngày **22/10/2026** trên máy hiện tại: Node và Windows đều phân giải được DNS, TCP đến cả ba máy chủ thành công, nhưng TLS của cả ba bị ngắt với `ECONNRESET` trước xác thực. TLS bằng Windows và thử riêng TLS 1.2 cũng thất bại; TLS đến trang Atlas qua cổng 443 thành công. Người dùng xác nhận IP hiện tại đã Active. Chưa xác định được thành phần ngắt kết nối và chưa kết nối MongoDB thành công trong lần kiểm tra này; cần đối chiếu mạng khác/Compass hoặc trạng thái cluster. Các phép kiểm tra không thay đổi dữ liệu cửa hàng.
+
+Hồi quy backend sau bổ sung chẩn đoán và thử lại kết nối: **230/230 đạt**, gồm 15 ca chẩn đoán lỗi lồng trong Mongoose và 9 ca khởi động/thử lại. Kết quả này không thay thế kiểm tra kết nối MongoDB thật.
 
 ### Kiểm tra tích hợp MongoDB thật
 
@@ -66,7 +110,7 @@ Sản phẩm đã có biến thể cũng chỉ gửi lại `variants` khi các d
 - Backend lấy giá sản phẩm hiện tại, kiểm tra số lượng nguyên dương, màu/size còn bán và tồn kho tương ứng. Giá gửi từ trình duyệt không quyết định tổng tiền đơn. Checkout gửi `expectedCart` gồm từng dòng `{ product, color, size, quantity }` khách đã xác nhận, cùng `expectedTotalPrice`. Backend đối chiếu nội dung giỏ sau khi giữ khóa, trước khi giữ hàng; đổi sản phẩm/màu/size/số lượng kể cả tổng tiền không đổi đều trả 409 để khách xem lại và xác nhận lại. API tạo đơn yêu cầu `expectedCart`; client cũ cần tải lại frontend hoặc cập nhật payload.
 - Phí giao hàng là 30.000 VND/đơn. Voucher fixed giảm số tiền cố định; percent giảm phần trăm nguyên từ 0 tới 100; mức giảm không vượt tiền sản phẩm. Voucher shipping miễn phí giao hàng một lần.
 - Voucher được kiểm tra ngày bắt đầu/kết thúc, trạng thái, đơn tối thiểu và lượt còn lại khi tạo đơn. Hủy đơn hoàn lại lượt voucher.
-- COD được ghi nhận thanh toán khi quản trị xác nhận giao thành công. BANK chờ quản trị đối chiếu chuyển khoản và xác nhận đã nhận tiền; thông tin ngân hàng người gửi không phải bằng chứng đã thanh toán.
+- Đơn mới chỉ nhận COD hoặc VNPAY Sandbox; đã bỏ lựa chọn và form chuyển khoản ngân hàng. API từ chối `BANK` trước khi khóa giỏ hoặc giữ kho. COD được ghi nhận thanh toán khi quản trị xác nhận giao thành công; VNPAY được xác nhận qua IPN/QueryDR đã xác thực. Đơn BANK đã tạo trước đây vẫn được hiển thị và xử lý, chờ quản trị đối chiếu chuyển khoản và xác nhận đã nhận tiền.
 - Quản trị chỉ hủy xác nhận thanh toán khi đơn đang xử lý hoặc đã xác nhận. Đơn đang giao/đã giao không hiện nút này; đơn đã hủy xử lý qua luồng hoàn tiền. Giao diện kiểm tra điều kiện trước khi gửi và tải lại danh sách nếu API báo trạng thái không còn cho phép thao tác (400/409).
 - Đơn đi theo Đang xử lý → Đã xác nhận → Đang giao → Đã giao. Khách chỉ hủy khi Đang xử lý; quản trị có thể hủy thêm ở Đã xác nhận. Đơn hủy hoàn tồn kho một lần.
 - Đơn đã thanh toán bị hủy được đánh dấu chờ hoàn tiền. Nếu trạng thái thanh toán đổi trong lúc yêu cầu hủy đang xử lý, API trả 409 trước khi hoàn kho để đọc và xử lý lại theo trạng thái mới. Quản trị chỉ xác nhận hoàn tiền sau khi đã thực hiện bên ngoài hệ thống; website chưa tự chuyển hoặc hoàn tiền qua cổng thanh toán.

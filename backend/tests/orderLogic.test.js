@@ -224,12 +224,12 @@ test('Schema từ chối số lượng âm/lẻ, tiền âm và size sai; chấp
   assert.ok(wrongCategory.validateSync()?.errors.category);
 });
 
-test('Checkout tính lại tiền từ Product, lưu size/địa chỉ/ngân hàng, BANK vẫn chờ xác nhận', async (t) => {
+test('Checkout COD tính lại tiền từ Product, lưu size/địa chỉ và bỏ thông tin chuyển khoản', async (t) => {
   const item = product();
   const customerId = id();
   const { saved } = mockCheckout(t, [item], [{ _id: customerId, cart: [cartItem(item, { quantity: 2, size: 38.5 })] }]);
   const res = response();
-  await addOrderItems(checkoutRequest(customerId, { paymentMethod: 'BANK', totalPrice: 1, discountAmount: 999999, bankTransferInfo: { bankName: 'VCB', accountNumber: '123456', accountHolder: 'Nguyễn An', transferNote: 'Thanh toán đơn hàng' } }), res);
+  await addOrderItems(checkoutRequest(customerId, { paymentMethod: 'COD', totalPrice: 1, discountAmount: 999999, bankTransferInfo: { bankName: 'VCB', accountNumber: '123456', accountHolder: 'Nguyễn An', transferNote: 'Thanh toán đơn hàng' } }), res);
   assert.equal(res.statusCode, 201);
   assert.equal(saved.length, 1);
   assert.equal(saved[0].totalPrice, 430000);
@@ -238,7 +238,8 @@ test('Checkout tính lại tiền từ Product, lưu size/địa chỉ/ngân hà
   assert.equal(saved[0].orderItems[0].price, 200000);
   assert.equal(saved[0].orderItems[0].size, 38.5);
   assert.deepEqual(saved[0].shippingAddress, shipping);
-  assert.equal(saved[0].bankTransferInfo.accountHolder, 'Nguyễn An');
+  assert.equal(saved[0].paymentMethod, 'COD');
+  assert.equal(saved[0].bankTransferInfo?.accountHolder, undefined);
   assert.equal(item.countInStock, 3);
 });
 
@@ -460,15 +461,18 @@ test('DELETE yêu cầu admin, payment chỉ nhận boolean', async () => {
   assert.equal(payment.statusCode, 400);
 });
 
-test('BANK từ chối payload sai kiểu trước khi giữ kho hoặc tạo đơn', async (t) => {
+test('Checkout từ chối BANK kể cả payload hợp lệ trước khi khóa giỏ, giữ kho hoặc tạo đơn', async (t) => {
   const item = product();
   const customerId = id();
   const { saved, stockCalls } = mockCheckout(t, [item], [{ _id: customerId, cart: [cartItem(item)] }]);
-  for (const bankTransferInfo of ['VCB', [], 123, { accountNumber: 123456 }]) {
+  const claim = t.mock.method(Customer, 'findOneAndUpdate', () => { throw new Error('Removed payment method must not claim the cart'); });
+  for (const bankTransferInfo of [undefined, { bankName: 'VCB', accountNumber: '123456', accountHolder: 'Nguyễn An' }, 'VCB', [], 123, { accountNumber: 123456 }]) {
     const res = response();
     await addOrderItems(checkoutRequest(customerId, { paymentMethod: 'BANK', bankTransferInfo }), res);
     assert.equal(res.statusCode, 400);
+    assert.match(res.body.message, /COD.*VNPAY/);
   }
+  assert.equal(claim.mock.callCount(), 0);
   assert.equal(saved.length, 0);
   assert.equal(stockCalls.length, 0);
   assert.equal(item.countInStock, 5);

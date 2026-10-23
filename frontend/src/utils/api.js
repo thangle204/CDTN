@@ -76,7 +76,10 @@ export const ordersAPI = {
   createOrder: (orderData) => api.post('/orders', orderData),
   getMyOrders: () => api.get('/orders/myorders', { params: { _t: Date.now() } }),
   
-  getOrderById: (id) => api.get(`/orders/${id}`, { params: { _t: Date.now() } }),
+  getOrderById: (id, { signal } = {}) => api.get(`/orders/${id}`, { params: { _t: Date.now() }, signal }),
+  createVnpayPayment: (id, { signal } = {}) => api.post(`/orders/${id}/vnpay/payment`, {}, { signal }),
+  reconcileVnpayPayment: (id, { signal, txnRef } = {}) => api.post(`/orders/${id}/vnpay/reconcile`, txnRef ? { txnRef } : {}, { signal, timeout: 30000 }),
+  verifyVnpayReturn: (rawQuery = '', { signal } = {}) => api.get(`/payments/vnpay/return${rawQuery ? rawQuery.startsWith('?') ? rawQuery : '?' + rawQuery : ''}`, { signal }),
   getAllOrders: (searchTerm = '') => api.get('/orders', { params: { search: searchTerm, _t: Date.now() } }),
   updateStatus: (id, orderStatus) => api.put(`/orders/${id}/status`, { orderStatus }),
   updateOrderToDelivered: (id) => api.put(`/orders/${id}/deliver`),

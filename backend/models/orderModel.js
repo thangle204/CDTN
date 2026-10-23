@@ -41,6 +41,24 @@ const bankTransferSchema = new mongoose.Schema({
   transferContent: { type: String, trim: true, maxlength: 500 },
 }, { _id: false });
 
+// Retain attempts for delayed callbacks after a retry. Signing keys never enter
+// an order, and the browser return is not a payment receipt.
+const vnpayPaymentSchema = new mongoose.Schema({
+  txnRef: { type: String, required: true, match: /^[a-f0-9]{40}$/ },
+  tmnCode: { type: String, required: true, maxlength: 8 },
+  amount: { ...money, min: 5000, max: 9999999999 },
+  createdAt: { type: Date, required: true },
+  expiresAt: { type: Date, required: true },
+  state: { type: String, required: true, enum: ['pending', 'failed', 'succeeded'], default: 'pending' },
+  transactionNo: { type: String, maxlength: 30 },
+  bankCode: { type: String, maxlength: 20 },
+  payDate: { type: String, maxlength: 14 },
+  responseCode: { type: String, maxlength: 2 },
+  transactionStatus: { type: String, maxlength: 2 },
+  verificationSource: { type: String, enum: ['ipn', 'querydr'] },
+  overpayment: { type: Boolean, default: false },
+}, { _id: false });
+
 const orderSchema = new mongoose.Schema({
   // Existing orders without this field remain committed. Only checkout creates
   // pending orders, which cannot be published or modified until its cart clears.
@@ -72,8 +90,15 @@ const orderSchema = new mongoose.Schema({
     phone: { type: String, required: true, match: /^0\d{9}$/ },
     notes: { type: String, trim: true, maxlength: 1000 },
   },
-  paymentMethod: { type: String, required: true, enum: ['COD', 'BANK'], default: 'COD' },
+  paymentMethod: { type: String, required: true, enum: ['COD', 'BANK', 'VNPAY'], default: 'COD' },
   bankTransferInfo: { type: bankTransferSchema, default: undefined },
+  vnpayPayments: {
+    type: [vnpayPaymentSchema], default: undefined,
+    validate: { validator: value => !value || value.length <= 20, message: 'Đơn hàng đã đạt giới hạn số lần thanh toán' },
+  },
+  paymentReviewRequired: { type: Boolean, default: false },
+  // Reserved before an outbound QueryDR call, including calls that time out.
+  vnpayQueryNextAt: Date,
   itemsPrice: { ...money, default: 0 },
   shippingPrice: { ...money, default: 0 },
   discountAmount: { ...money, default: 0 },

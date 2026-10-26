@@ -22,7 +22,7 @@ afterEach(() => {
 
 before(async () => {
   const entries = { Button: 'components/VnpayPaymentButton.jsx', Return: 'pages/VnpayReturn.jsx', Checkout: 'pages/Checkout.jsx', Orders: 'pages/MyOrders.jsx' };
-  const icons = [...new Set(Object.values(entries).flatMap(relative => fs.readFileSync(path.join(sourceRoot, relative), 'utf8').match(/\bFa[A-Z]\w*/g) || []))];
+  const icons = [...new Set([...Object.values(entries), 'components/OrderReviews.jsx'].flatMap(relative => fs.readFileSync(path.join(sourceRoot, relative), 'utf8').match(/\bFa[A-Z]\w*/g) || []))];
   const plugin = {
     name: 'vnpay-ui-test-mocks',
     setup(build) {

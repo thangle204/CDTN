@@ -203,27 +203,7 @@ export const getProductReviews = async (req, res) => {
 };
 
 export const createProductReview = async (req, res) => {
-  if (typeof req.body.rating !== 'number' && typeof req.body.rating !== 'string') throw httpError(400, 'Điểm đánh giá phải từ 1 đến 5 sao');
-  const rating = Number(req.body.rating);
-  if (!Number.isInteger(rating) || rating < 1 || rating > 5) throw httpError(400, 'Điểm đánh giá phải từ 1 đến 5 sao');
-  const comment = cleanText(req.body.comment, 'Nội dung đánh giá', { max: 2000 });
-  const product = await Product.findById(req.params.id);
-  if (!product || product.isHidden || product.isArchived) throw httpError(404, 'Sản phẩm không còn được bán');
-  const purchased = await Order.exists({
-    user: req.user._id,
-    'orderItems.product': product._id,
-    checkoutState: { $ne: 'pending' },
-    isPaid: true,
-    isDelivered: true,
-    orderStatus: 'Đã giao',
-  });
-  if (!purchased) throw httpError(403, 'Bạn có thể đánh giá sau khi đơn hàng đã được thanh toán và giao thành công');
-  if (product.reviews.some((review) => String(review.user) === String(req.user._id))) throw httpError(409, 'Bạn đã đánh giá sản phẩm này');
-  product.reviews.push({ name: req.user.name || 'Khách hàng', rating, comment, user: req.user._id });
-  product.numReviews = product.reviews.length;
-  product.rating = product.reviews.reduce((total, review) => total + review.rating, 0) / product.numReviews;
-  await product.save();
-  res.status(201).json({ message: 'Đã gửi đánh giá', reviews: product.reviews, numReviews: product.numReviews, rating: product.rating });
+  throw httpError(410, 'Vui lòng viết hoặc sửa đánh giá trong Đơn hàng của tôi sau khi đơn đã giao');
 };
 
 export const deleteProductReview = async (req, res) => {

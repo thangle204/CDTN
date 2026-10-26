@@ -13,6 +13,8 @@ const reviewSchema = mongoose.Schema(
         name: { type: String, required: true },
         rating: { type: Number, required: true, min: 1, max: 5, validate: Number.isSafeInteger },
         comment: { type: String, required: true },
+        order: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' },
+        version: { type: Number, default: 0, min: 0, validate: Number.isSafeInteger },
         user: {
             type: mongoose.Schema.Types.ObjectId,
             required: true,
@@ -21,6 +23,8 @@ const reviewSchema = mongoose.Schema(
     },
     {
         timestamps: true,
+        toJSON: { transform(_document, result) { delete result.order; delete result.version; return result; } },
+        toObject: { transform(_document, result) { delete result.order; delete result.version; return result; } },
     }
 );
 

@@ -42,6 +42,18 @@ const expiredRequest = (path = '/orders/myorders') => {
   return { started, settled, reject: () => reject() };
 };
 
+test('order reviews use authenticated cancellable order routes and preserve review versions', async () => {
+  setup(); const requests = [];
+  api.defaults.adapter = async config => { requests.push(config); return { status: 200, data: {}, config }; };
+  const controller = new AbortController();
+  await ordersAPI.getOrderReviews('order-1', { signal: controller.signal });
+  await ordersAPI.createOrderReview('order-1', 'shoe-1', { rating: 5, comment: 'Good fit' }, { signal: controller.signal });
+  await ordersAPI.updateOrderReview('order-1', 'shoe-1', { rating: 4, comment: 'Updated', expectedVersion: 2 }, { signal: controller.signal });
+  assert.deepEqual(requests.map(config => [config.method, config.url]), [['get', '/orders/order-1/reviews'], ['post', '/orders/order-1/reviews/shoe-1'], ['put', '/orders/order-1/reviews/shoe-1']]);
+  assert.equal(JSON.parse(requests[2].data).expectedVersion, 2);
+  assert(requests.every(config => config.signal === controller.signal));
+});
+
 test('VNPAY API preserves the original return query and uses cancellable order payment requests', async () => {
   setup();
   const requests = [];

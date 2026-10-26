@@ -32,7 +32,7 @@ const setup = values => {
   return harness;
 };
 const render = (component, harness) => { harness.cursor = 0; return component(); };
-const productState = (color = '', size = '', quantity = 1) => [shoe, false, quantity, size, '', '', false, [], '', false, { rating: 5, comment: '' }, false, color];
+const productState = (color = '', size = '', quantity = 1) => [shoe, false, quantity, size, '', '', false, [], '', color];
 const components = (async () => {
   const names = ['ProductDetail', 'Cart', 'Checkout', 'MyOrders'];
   const icons = new Set(names.flatMap(name => fs.readFileSync(path.join(root, 'pages', name + '.jsx'), 'utf8').match(/\bFa[A-Z]\w*/g) || []));
@@ -92,7 +92,7 @@ test('product requires color before adding and changing color clears size and qu
   assert.equal(h.calls.length, 0);
   assert.match(h.values[4], /chọn màu/);
   findButton(render(ProductDetail, h), 'Đen').props.onClick();
-  assert.equal(h.values[12], 'Đen');
+  assert.equal(h.values[9], 'Đen');
   assert.equal(h.values[3], '');
   assert.equal(h.values[2], 1);
   const tree = render(ProductDetail, h);
@@ -122,7 +122,7 @@ test('product refresh preserves the current selection when color changes during 
   h.effects = [];
   render(ProductDetail, h);
   h.effects[1]();
-  assert.equal(h.values[12], 'Trắng');
+  assert.equal(h.values[9], 'Trắng');
   assert.equal(h.values[3], '41');
   assert.equal(h.values[2], 1);
 });

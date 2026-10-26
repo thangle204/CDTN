@@ -115,7 +115,7 @@ Sản phẩm đã có biến thể cũng chỉ gửi lại `variants` khi các d
 - Đơn đi theo Đang xử lý → Đã xác nhận → Đang giao → Đã giao. Khách chỉ hủy khi Đang xử lý; quản trị có thể hủy thêm ở Đã xác nhận. Đơn hủy hoàn tồn kho một lần.
 - Đơn đã thanh toán bị hủy được đánh dấu chờ hoàn tiền. Nếu trạng thái thanh toán đổi trong lúc yêu cầu hủy đang xử lý, API trả 409 trước khi hoàn kho để đọc và xử lý lại theo trạng thái mới. Quản trị chỉ xác nhận hoàn tiền sau khi đã thực hiện bên ngoài hệ thống; website chưa tự chuyển hoặc hoàn tiền qua cổng thanh toán.
 - Chỉ quản trị được xóa đơn đã hủy và hoàn kho, đồng thời đã hoàn tiền nếu trước đó đã thanh toán. DELETE sản phẩm thực hiện lưu trữ (`isArchived`, `isHidden`), giữ nguyên SKU và tồn kho để hoàn hàng/hủy đơn. Sản phẩm lưu trữ không xuất hiện trong catalog thường, không sửa hoặc bật bán lại bằng API thông thường. Dùng chức năng ẩn/hiện cho sản phẩm chỉ tạm ngừng bán.
-- Đánh giá yêu cầu đơn đã thanh toán và giao thành công; mỗi khách đánh giá một lần cho mỗi sản phẩm.
+- Đánh giá nằm trong **Đơn hàng của tôi → đơn Đã giao → Đánh giá sản phẩm**. Đơn phải thuộc khách đang đăng nhập, đã thanh toán và giao thành công; sản phẩm phải có trong đúng đơn đó. Mỗi khách có một đánh giá cho mỗi mẫu giày, có thể sửa trong đơn đủ điều kiện. Trang chi tiết giày chỉ hiển thị đánh giá và điểm trung bình. Hai tab sửa cùng lúc phải tải lại nếu bản đánh giá đã thay đổi; không ghi đè âm thầm.
 - Doanh thu bán hàng tính các đơn đã thanh toán, loại đơn đã hủy, giao thất bại và đã xử lý hoàn hàng; thời gian thống kê theo Việt Nam. Phí giao giữ lại và chi phí chuyển hoàn được ghi riêng ở chi tiết đơn, không tính là doanh số bán giày.
 
 ## Giao thất bại / khách từ chối nhận

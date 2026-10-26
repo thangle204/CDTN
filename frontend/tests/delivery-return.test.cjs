@@ -16,7 +16,7 @@ const mockPlugin = {
       if (args.path === 'react') return { contents: 'export const useState = initial => globalThis.__deliveryTest.state(initial); export const useRef = initial => globalThis.__deliveryTest.ref(initial); export const useEffect = effect => globalThis.__deliveryTest.effects.push(effect);' };
       if (args.path === 'react/jsx-runtime') return { contents: 'export const Fragment="fragment"; export const jsx=(type,props,key)=>({type,props:props||{},key}); export const jsxs=jsx;' };
       if (args.path === 'router') return { contents: 'export const Link="a";' };
-      if (args.path === 'icons') return { contents: ['FaBox', 'FaPhone', 'FaMapMarkerAlt', 'FaEdit', 'FaSearch', 'FaMoneyBillWave', 'FaCheckCircle', 'FaClock', 'FaTruck', 'FaTimesCircle'].map(name => `export const ${name}=()=>null;`).join('\n') };
+      if (args.path === 'icons') return { contents: ['FaBox', 'FaPhone', 'FaMapMarkerAlt', 'FaEdit', 'FaSearch', 'FaMoneyBillWave', 'FaCheckCircle', 'FaClock', 'FaTruck', 'FaTimesCircle', 'FaStar'].map(name => `export const ${name}=()=>null;`).join('\n') };
       if (args.path === 'api') return { contents: 'export const ordersAPI=new Proxy({},{get:(_,name)=>(...args)=>globalThis.__deliveryTest.request(name,args)});' };
       if (args.path === 'auth') return { contents: 'export const useAuth=()=>globalThis.__deliveryTest.auth;' };
     });

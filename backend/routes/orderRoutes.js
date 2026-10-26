@@ -7,6 +7,7 @@ import {
 import { protect, admin, customerOnly } from '../middleware/authMiddleware.js';
 import { recordDeliveryFailure, completeDeliveryReturn } from '../controllers/deliveryController.js';
 import { createVnpayPayment, reconcileVnpayPayment } from '../controllers/vnpayController.js';
+import { getOrderReviews, createOrderReview, updateOrderReview } from '../controllers/orderReviewController.js';
 
 const router = express.Router();
 router.use(protect);
@@ -15,6 +16,9 @@ router.get('/stats/top-customers', admin, getTopCustomers);
 router.get('/stats/overview', admin, getOrdersOverview);
 router.route('/').post(customerOnly, addOrderItems).get(admin, getOrders);
 router.get('/myorders', customerOnly, getMyOrders);
+router.get('/:id/reviews', customerOnly, getOrderReviews);
+router.post('/:id/reviews/:productId', customerOnly, createOrderReview);
+router.put('/:id/reviews/:productId', customerOnly, updateOrderReview);
 router.get('/:id', getOrderById);
 router.post('/:id/vnpay/payment', customerOnly, createVnpayPayment);
 router.post('/:id/vnpay/reconcile', reconcileVnpayPayment);

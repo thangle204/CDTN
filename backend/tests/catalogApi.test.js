@@ -309,30 +309,12 @@ test('product and voucher schemas reject impossible numeric/date values without 
   await new Voucher({ ...voucherFields, discount: 100 }).validate();
 });
 
-test('review creation rejects coercible boolean/array ratings and requires a completed paid purchase', async (t) => {
+test('legacy product review writes are retired and cannot modify a product', async (t) => {
   installUser(t, false);
-  const product = { _id: productId, isHidden: false, reviews: [], save: async () => product };
-  const lookup = t.mock.method(Product, 'findById', async () => product);
-  let purchaseFilter;
-  let purchased = false;
-  t.mock.method(Order, 'exists', async filter => { purchaseFilter = filter; return purchased; });
-  for (const rating of [true, [5], 0, 6, 4.5]) {
-    const result = await request(`/api/products/${productId}/reviews`, { method: 'POST', auth: true, body: { rating, comment: 'Test review' } });
-    assert.equal(result.status, 400, JSON.stringify(rating));
-  }
+  const lookup = t.mock.method(Product, 'findById', () => { throw new Error('Legacy review writes must not read products'); });
+  const result = await request(`/api/products/${productId}/reviews`, { method: 'POST', auth: true, body: { rating: 5, comment: 'Review from an old client' } });
+  assert.equal(result.status, 410);
   assert.equal(lookup.mock.callCount(), 0);
-  const unpurchased = await request(`/api/products/${productId}/reviews`, { method: 'POST', auth: true, body: { rating: 5, comment: 'Test review' } });
-  assert.equal(unpurchased.status, 403);
-  assert.equal(purchaseFilter.isPaid, true);
-  assert.equal(purchaseFilter.isDelivered, true);
-  assert.equal(purchaseFilter.orderStatus, 'Đã giao');
-  purchased = true;
-  const successful = await request(`/api/products/${productId}/reviews`, { method: 'POST', auth: true, body: { rating: '5', comment: '  Comfortable  ' } });
-  assert.equal(successful.status, 201);
-  assert.equal(successful.body.rating, 5);
-  assert.equal(successful.body.numReviews, 1);
-  assert.equal(successful.body.reviews[0].comment, 'Comfortable');
-  assert.equal((await request(`/api/products/${productId}/reviews`, { method: 'POST', auth: true, body: { rating: 4, comment: 'Duplicate' } })).status, 409);
 });
 
 test('review deletion requires its author or an administrator', async (t) => {

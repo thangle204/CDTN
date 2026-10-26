@@ -85,7 +85,7 @@ const form = tree => allNodes(tree).find(node => node.type === 'form');
 const event = { preventDefault() {}, stopPropagation() {} };
 const product = {_id:'shoe-1', name:'Sneaker', price:100000, countInStock:10, sizes:[40,41], image:'/shoe.svg', rating:5, numReviews:1};
 const item = {_id:'cart-1',product,size:40,price:100000,quantity:2};
-const reviewStates = selected => [product,false,2,selected,'','',false,[{_id:'review-1',name:'Customer',rating:5,comment:'Great',createdAt:'2026-10-12'}],'',false,{rating:5,comment:'Great'},false];
+const reviewStates = selected => [product,false,2,selected,'','',false,[{_id:'review-1',name:'Customer',rating:5,comment:'Great',createdAt:'2026-10-12'}],'',''];
 const shipping = {name:' Customer ',phone:'0901234567',address:' Street ',city:' City ',district:' District ',ward:' Ward ',notes:' Note '};
 const checkoutStates = (quote=null, step=2) => [[item],false,false,step,'',[],'',quote,'',false,null,shipping,'COD'];
 let assertions = 0;
@@ -111,13 +111,18 @@ const test = async (name, action) => { await action(); assertions++; console.log
     await button(components.ProductDetail(),'Thêm vào giỏ').props.onClick();
     assert.deepEqual(h.calls.find(call => call.name==='addToCart').args,['shoe-1',2,'40']);
   });
-  await test('review submission uses shared product API and reloads reviews', async () => {
+  await test('product details display reviews without a writing or editing form', async () => {
     const h = setup(reviewStates('40'));
-    h.values[9] = true;
+    h.values[8] = 'Không thể tải đánh giá';
     h.request = async (name,args) => { h.calls.push({name,args}); return {data:name==='getProductById' ? product : {reviews:[]}}; };
-    await form(components.ProductDetail()).props.onSubmit(event);
-    assert.deepEqual(h.calls.find(call => call.name==='createReview').args,['shoe-1',{rating:5,comment:'Great'}]);
+    const tree = components.ProductDetail();
+    assert.equal(form(tree), undefined);
+    assert.equal(button(tree, 'Viết đánh giá'), undefined);
+    assert.equal(button(tree, 'Sửa đánh giá'), undefined);
+    assert(textOf(tree).includes('Great'));
+    await button(tree, 'Thử lại').props.onClick();
     assert(h.calls.some(call => call.name==='getReviews'));
+    assert(!h.calls.some(call => /create.*Review|update.*Review/i.test(call.name)));
   });
   await test('cart variant update uses cart item ID', async () => {
     const h = setup([[item,{...item,_id:'cart-2',size:41,quantity:3}],false,false,'']);

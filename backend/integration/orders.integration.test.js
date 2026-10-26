@@ -291,7 +291,7 @@ test('real MongoDB checkout, cancellation, payment and archived inventory', { ti
     const placed = assertStatus(await placeOrder(ctx, buyerToken), 201);
     assert.equal(placed.isPaid, false);
     const reviewBody = { rating: 5, comment: 'Integration review after verified delivery' };
-    assertStatus(await ctx.request('POST', `/api/products/${product._id}/reviews`, {
+    assertStatus(await ctx.request('POST', `/api/orders/${placed._id}/reviews/${product._id}`, {
       token: buyerToken, body: reviewBody,
     }), 403);
     assertStatus(await ctx.request('PUT', `/api/orders/${placed._id}/status`, {
@@ -307,14 +307,19 @@ test('real MongoDB checkout, cancellation, payment and archived inventory', { ti
     assert.equal(delivered.isDelivered, true);
     assert.ok(delivered.paidAt);
     assert.ok(delivered.deliveredAt);
-    const review = assertStatus(await ctx.request('POST', `/api/products/${product._id}/reviews`, {
+    const review = assertStatus(await ctx.request('POST', `/api/orders/${placed._id}/reviews/${product._id}`, {
       token: buyerToken, body: reviewBody,
     }), 201);
     assert.equal(review.numReviews, 1);
     assert.equal(review.rating, 5);
-    assertStatus(await ctx.request('POST', `/api/products/${product._id}/reviews`, {
+    assertStatus(await ctx.request('POST', `/api/orders/${placed._id}/reviews/${product._id}`, {
       token: buyerToken, body: reviewBody,
     }), 409);
+    const revised = assertStatus(await ctx.request('PUT', `/api/orders/${placed._id}/reviews/${product._id}`, {
+      token: buyerToken, body: { rating: 4, comment: 'Updated from my delivered order', expectedVersion: review.review.version },
+    }), 200);
+    assert.equal(revised.numReviews, 1);
+    assert.equal(revised.rating, 4);
     assertStatus(await cancelOrder(ctx, buyerToken, placed._id), 400);
     assertStatus(await ctx.request('PUT', `/api/orders/${placed._id}/payment`, {
       token: adminToken, body: { isPaid: false },

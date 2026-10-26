@@ -5,6 +5,8 @@ import { ordersAPI } from '../utils/api';
 import { productImageUrl } from '../utils/productVariants';
 import { DeliveryReturnSummary } from '../components/DeliveryReturnActions';
 import VnpayPaymentButton from '../components/VnpayPaymentButton';
+import OrderReviews from '../components/OrderReviews';
+import { canReviewOrder } from '../utils/orderReviews';
 import { canPayWithVnpay } from '../utils/vnpay';
 import { FaBox, FaPhone, FaMapMarkerAlt, FaCheckCircle, FaClock, FaTruck, FaTimesCircle } from 'react-icons/fa';
 
@@ -318,6 +320,7 @@ const MyOrders = () => {
 
                 {/* Actions */}
                 <DeliveryReturnSummary order={order} />
+                {canReviewOrder(order) && <OrderReviews order={order} />}
                 <div className="mt-4 flex gap-3">
                   {order.orderStatus === 'Đang xử lý' && (
                     <button

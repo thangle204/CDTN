@@ -24,9 +24,6 @@ const ProductDetail = () => {
   
   const [reviews, setReviews] = useState([]);
   const [reviewError, setReviewError] = useState('');
-  const [showReviewForm, setShowReviewForm] = useState(false);
-  const [reviewData, setReviewData] = useState({ rating: 5, comment: '' });
-  const [submittingReview, setSubmittingReview] = useState(false);
   const [selectedColor, setSelectedColor] = useState('');
   const productVersion = useRef(0);
   const reviewVersion = useRef(0);
@@ -80,32 +77,6 @@ const ProductDetail = () => {
       setReviews(response.data.reviews || []);
     } catch (error) {
       if (version === reviewVersion.current) setReviewError(error.response?.data?.message || 'Không thể tải đánh giá. Vui lòng thử lại.');
-    }
-  };
-
-  const handleSubmitReview = async (e) => {
-    e.preventDefault();
-    if (!user) {
-      navigate('/login', { state: { from: `/products/${id}` } });
-      return;
-    }
-
-    setSubmittingReview(true);
-    try {
-      setError('');
-      await productsAPI.createReview(id, reviewData);
-      
-      setSuccess('✅ Đánh giá của bạn đã được gửi!');
-      setShowReviewForm(false);
-      setReviewData({ rating: 5, comment: '' });
-      fetchProduct();
-      fetchReviews();
-      
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (error) {
-      setError(error.response?.data?.message || 'Gửi đánh giá thất bại');
-    } finally {
-      setSubmittingReview(false);
     }
   };
 
@@ -405,58 +376,10 @@ const ProductDetail = () => {
         <div className="mt-8 bg-white rounded-lg shadow p-6 shop-panel">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-gray-800">Đánh giá sản phẩm</h2>
-            {user && (
-              <button
-                onClick={() => setShowReviewForm(!showReviewForm)}
-                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
-              >
-                {showReviewForm ? 'Hủy' : 'Viết đánh giá'}
-              </button>
-            )}
           </div>
 
-          {/* Review Form */}
-          {showReviewForm && (
-            <form onSubmit={handleSubmitReview} className="mb-6 p-4 bg-gray-50 rounded-lg">
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">Đánh giá của bạn</label>
-                <div className="flex gap-2">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setReviewData({ ...reviewData, rating: star })}
-                      className="text-3xl"
-                    >
-                      <FaStar className={star <= reviewData.rating ? 'text-yellow-400' : 'text-gray-300'} />
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">Nhận xét</label>
-                <textarea
-                  value={reviewData.comment}
-                  onChange={(e) => setReviewData({ ...reviewData, comment: e.target.value })}
-                  required
-                  rows="4"
-                  className="w-full border rounded-lg px-3 py-2"
-                  placeholder="Chia sẻ trải nghiệm của bạn về sản phẩm..."
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={submittingReview}
-                className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50"
-              >
-                {submittingReview ? 'Đang gửi...' : 'Gửi đánh giá'}
-              </button>
-            </form>
-          )}
-
           {/* Reviews List */}
+          <p className="mb-5 text-sm text-gray-600">Xem cảm nhận của khách hàng. Bạn có thể viết hoặc sửa đánh giá trong <Link to="/my-orders" className="font-semibold text-red-600 hover:underline">Đơn hàng của tôi</Link> sau khi đơn đã được giao và thanh toán.</p>
           {reviewError && <p role="alert" className="bg-red-50 text-red-700 p-3 rounded-lg mb-4">{reviewError} <button onClick={fetchReviews} className="underline">Thử lại</button></p>}
           <div className="space-y-4">
             {reviews.length === 0 ? (
@@ -475,7 +398,7 @@ const ProductDetail = () => {
                       ))}
                     </div>
                   </div>
-                  <p className="text-gray-700 text-sm">{review.comment}</p>
+                  <p className="whitespace-pre-wrap break-words text-gray-700 text-sm">{review.comment}</p>
                   <p className="text-xs text-gray-400 mt-2">
                     {new Date(review.createdAt).toLocaleDateString('vi-VN')}
                   </p>

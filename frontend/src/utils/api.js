@@ -59,7 +59,6 @@ export const productsAPI = {
   
   getProductById: (id) => api.get(`/products/${id}`, { params: { _t: Date.now() } }),
   getReviews: (id) => api.get(`/products/${id}/reviews`),
-  createReview: (id, review) => api.post(`/products/${id}/reviews`, review),
   
   getAllProducts: () => api.get('/products/admin/all', { params: { _t: Date.now() } }),
   createProduct: (productData) => api.post('/products', productData),
@@ -75,6 +74,9 @@ export const productsAPI = {
 export const ordersAPI = {
   createOrder: (orderData) => api.post('/orders', orderData),
   getMyOrders: () => api.get('/orders/myorders', { params: { _t: Date.now() } }),
+  getOrderReviews: (id, { signal } = {}) => api.get(`/orders/${id}/reviews`, { signal, params: { _t: Date.now() } }),
+  createOrderReview: (id, productId, review, { signal } = {}) => api.post(`/orders/${id}/reviews/${productId}`, review, { signal }),
+  updateOrderReview: (id, productId, review, { signal } = {}) => api.put(`/orders/${id}/reviews/${productId}`, review, { signal }),
   
   getOrderById: (id, { signal } = {}) => api.get(`/orders/${id}`, { params: { _t: Date.now() }, signal }),
   createVnpayPayment: (id, { signal } = {}) => api.post(`/orders/${id}/vnpay/payment`, {}, { signal }),

@@ -24,7 +24,9 @@ export const createApp = () => {
     exposedHeaders: ['X-Demo-Mode'],
   }));
   app.use('/uploads/products', serveProductImages());
-  app.use(express.json({ limit: '64kb' }));
+  const parseJson = express.json({ limit: '64kb' });
+  const parseProductJson = express.json({ limit: '512kb' });
+  app.use((req, res, next) => (/^\/api\/products(?:\/|$)/.test(req.path) ? parseProductJson : parseJson)(req, res, next));
   app.use((req, res, next) => {
     req.body ??= {};
     if (typeof req.body !== 'object' || Array.isArray(req.body)) return res.status(400).json({ message: 'Nội dung yêu cầu phải là một đối tượng JSON' });

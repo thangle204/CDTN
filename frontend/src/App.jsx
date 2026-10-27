@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import StoreFooter from './components/StoreFooter';
 import AdminRoute from './components/AdminRoute';
+import './components/product-detail.css';
 
 import Home from './pages/Home';
 import Login from './pages/Login';

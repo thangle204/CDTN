@@ -127,6 +127,67 @@ test('admin product creation normalizes color/size rows and derives totals inste
   assert.equal(saved.name, shoeFields.name);
 });
 
+test('admin creation saves a gallery, detailed specifications and article sections together', async t => {
+  installUser(t);
+  t.mock.method(Product.prototype, 'save', async function () { await this.validate(); return this; });
+  const images = ['/uploads/products/front.jpg', '/uploads/products/back.jpg'];
+  const result = await request('/api/products', { method: 'POST', auth: true, body: {
+    ...shoeFields, image: images[0], images, material: ' Mesh ', origin: ' Store supplied ', gender: 'Unisex', modelCode: ' MODEL-1 ',
+    variants: [{ color: 'White', size: 40, quantity: 5 }],
+    contentSections: [{ title: ' Design ', body: 'First paragraph\n\n- Soft lining\n- Rubber sole', image: images[1], caption: ' Back view ' }],
+  } });
+  assert.equal(result.status, 201, result.body.message);
+  assert.deepEqual(result.body.images, images); assert.equal(result.body.image, images[0]);
+  assert.equal(result.body.material, 'Mesh'); assert.equal(result.body.modelCode, 'MODEL-1');
+  assert.equal(result.body.contentSections[0].image, images[1]); assert.equal(result.body.contentSections[0].caption, 'Back view');
+  assert.equal(result.body.countInStock, 5);
+});
+
+test('invalid gallery/article payloads never reach product persistence', async t => {
+  installUser(t);
+  const save = t.mock.method(Product.prototype, 'save', () => { throw new Error('Invalid media must not persist'); });
+  for (const patch of [{ images: [] }, { images: 'not-an-array' }, { images: [shoeFields.image, shoeFields.image] }, { images: ['/different.jpg'] }, { images: Array.from({ length: 11 }, (_, i) => `/image-${i}.jpg`) }, { gender: 'Invalid' }, { contentSections: [{ body: 'Text', image: '/outside-gallery.jpg' }] }, { contentSections: [{ title: 'Empty section' }] }]) {
+    const result = await request('/api/products', { method: 'POST', auth: true, body: { ...shoeFields, variants: [{ color: 'White', size: 40, quantity: 5 }], ...patch } });
+    assert.equal(result.status, 400, JSON.stringify(patch));
+  }
+  assert.equal(save.mock.callCount(), 0);
+});
+
+test('gallery and article edits preserve legacy shared inventory and its migration guards', async t => {
+  installUser(t);
+  const product = new Product({ ...shoeFields, _id: productId, __v: 4, images: [shoeFields.image] });
+  t.mock.method(Product, 'findById', async () => product);
+  const orderLookup = t.mock.method(Order, 'exists', () => { throw new Error('Metadata edit must not inspect inventory migration'); });
+  const cartLookup = t.mock.method(Customer, 'exists', () => { throw new Error('Metadata edit must not inspect inventory migration'); });
+  t.mock.method(Product.prototype, 'save', async function () { await this.validate(); return this; });
+  const result = await request(`/api/products/${productId}`, { method: 'PUT', auth: true, body: { version: 4, images: [shoeFields.image, '/detail.jpg'], contentSections: [{ title: 'Care', body: 'Dry naturally', image: '/detail.jpg' }], material: 'Canvas' } });
+  assert.equal(result.status, 200, result.body.message);
+  assert.equal(result.body.countInStock, shoeFields.countInStock); assert.deepEqual(result.body.sizes, shoeFields.sizes);
+  assert.equal(result.body.variants.length, 0); assert.equal(orderLookup.mock.callCount(), 0); assert.equal(cartLookup.mock.callCount(), 0);
+});
+
+test('article preflight checks a detached candidate and rejects removed inline image references', async t => {
+  installUser(t);
+  const product = new Product({ ...shoeFields, _id: productId, __v: 2, images: [shoeFields.image, '/detail.jpg'], contentSections: [{ body: 'Existing detail', image: '/detail.jpg' }] });
+  t.mock.method(Product, 'findById', async () => product);
+  const save = t.mock.method(Product.prototype, 'save', () => { throw new Error('Preflight must not save'); });
+  const before = product.toObject();
+  const invalid = await request(`/api/products/${productId}/validate-update`, { method: 'POST', auth: true, body: { version: 2, images: [shoeFields.image] } });
+  assert.equal(invalid.status, 400); assert.deepEqual(product.toObject(), before);
+  const valid = await request(`/api/products/${productId}/validate-update`, { method: 'POST', auth: true, body: { version: 2, images: [shoeFields.image], contentSections: [{ body: 'Text only' }] } });
+  assert.equal(valid.status, 200); assert.deepEqual(product.toObject(), before); assert.equal(save.mock.callCount(), 0);
+});
+
+test('long Vietnamese product articles exceed 64KB safely while ordinary API body limits stay unchanged', async t => {
+  installUser(t);
+  t.mock.method(Product.prototype, 'save', async function () { await this.validate(); return this; });
+  const body = { ...shoeFields, variants: [{ color: 'White', size: 40, quantity: 5 }], contentSections: Array.from({ length: 4 }, () => ({ body: 'ấ'.repeat(9000) })) };
+  assert(Buffer.byteLength(JSON.stringify(body)) > 65536);
+  assert.equal((await request('/api/products', { method: 'POST', auth: true, body })).status, 201);
+  assert.equal((await request('/api/orders', { method: 'POST', auth: true, body: { padding: 'x'.repeat(70000) } })).status, 413);
+  assert.equal((await request('/api/products', { method: 'POST', auth: true, body: { padding: 'x'.repeat(530000) } })).status, 413);
+});
+
 test('admin product endpoint rejects invalid category, image and inventory rows before save', async (t) => {
   installUser(t);
   const save = t.mock.method(Product.prototype, 'save', async () => { throw new Error('Invalid products must not save'); });

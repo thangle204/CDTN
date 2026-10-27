@@ -11,7 +11,7 @@ const mockPlugin = {
     build.onResolve({ filter: /^react-icons\/fa$/ }, () => ({ path: 'icons', namespace: 'mock' }));
     build.onResolve({ filter: /utils\/api(?:\.js)?$/ }, () => ({ path: 'api', namespace: 'mock' }));
     build.onLoad({ filter: /.*/, namespace: 'mock' }, args => {
-      if (args.path === 'react') return { contents: 'export const useState = initial => globalThis.__adminProductTest.state(initial); export const useEffect = effect => globalThis.__adminProductTest.effects.push(effect);' };
+      if (args.path === 'react') return { contents: 'export const useState = initial => globalThis.__adminProductTest.state(initial); export const useEffect = effect => globalThis.__adminProductTest.effects.push(effect); export const useRef = initial => globalThis.__adminProductTest.ref(initial);' };
       if (args.path === 'react/jsx-runtime') return { contents: 'export const Fragment = "fragment"; export const jsx = (type, props, key) => ({type,props:props||{},key}); export const jsxs = jsx;' };
       if (args.path === 'icons') return { contents: ['FaPlus', 'FaEdit', 'FaEye', 'FaEyeSlash', 'FaSearch', 'FaTrash'].map(icon => `export const ${icon} = () => null;`).join('\n') };
       if (args.path === 'api') return { contents: 'export const productsAPI = new Proxy({}, {get:(_,name)=>(...args)=>globalThis.__adminProductTest.request(name,args)});' };
@@ -43,7 +43,7 @@ const text = tree => {
 };
 const setup = (products = []) => {
   const harness = {
-    values: [products, false], cursor: 0, effects: [], calls: [], alerts: [],
+    values: [products, false], cursor: 0, refCursor: 0, refs: [], effects: [], calls: [], alerts: [],
     state(initial) {
       const index = this.cursor++;
       if (!(index in this.values)) this.values[index] = typeof initial === 'function' ? initial() : initial;
@@ -53,7 +53,8 @@ const setup = (products = []) => {
       this.calls.push({ name, args });
       return { data: name === 'uploadImage' ? { image: '/uploads/products/new-shoe.png' } : { products } };
     },
-    render() { this.cursor = 0; this.effects = []; return AdminProducts(); },
+    ref(initial) { return this.refs[this.refCursor++] ||= { current: initial }; },
+    render() { this.cursor = 0; this.refCursor = 0; this.effects = []; return AdminProducts(); },
     input(selector) {
       const input = nodes(this.render()).find(node => ['input', 'select', 'textarea'].includes(node.type) && selector(node.props));
       assert.ok(input, 'Expected form input');
@@ -299,6 +300,87 @@ test('retry after a final save failure reuses the uploaded image and keeps metad
     assert.equal(Object.hasOwn(call.args[1], 'variants'), false);
   }
   assert.equal(nodes(h.render()).some(node => node.props?.role === 'dialog'), false);
+});
+
+const galleryFiles = (h, files) => h.input(props => props.id === 'product-gallery-files').props.onChange({ target: { files, value: 'selected' } });
+const sectionChange = (h, index, field, value) => h.input(props => props.id === `content-${field}-${index}`).props.onChange({ target: { value } });
+
+test('gallery supports multiple local images, enforces the limit and rejects invalid batches atomically', () => {
+  const h = setup(); h.open(); fill(h); h.selectImage(image);
+  galleryFiles(h, [{ ...image, name: 'side.png' }, { ...image, name: 'back.png' }]);
+  assert.match(text(h.render()), /Ảnh bổ sung \(\s*2\s*\/9\)/);
+  galleryFiles(h, [{ ...image, name: 'bad.svg', type: 'image/svg+xml' }]);
+  assert.match(text(h.render()), /Ảnh bổ sung \(\s*2\s*\/9\)/); assert.match(text(h.render()), /tối đa 5 MB/);
+  galleryFiles(h, Array.from({ length: 8 }, (_, i) => ({ ...image, name: `${i}.png` })));
+  assert.match(text(h.render()), /Ảnh bổ sung \(\s*2\s*\/9\)/); assert.match(text(h.render()), /tối đa 9 ảnh bổ sung/);
+});
+
+test('gallery files upload before saving and article images use the final uploaded URLs', async () => {
+  const h = setup(); h.open(); fill(h); h.selectImage(image);
+  galleryFiles(h, [{ ...image, name: 'side.png' }, { ...image, name: 'back.png' }]);
+  h.button('+ Thêm mục giới thiệu').props.onClick();
+  sectionChange(h, 0, 'title', ' Design '); sectionChange(h, 0, 'body', ' Detailed introduction ');
+  const options = nodes(h.input(props => props.id === 'content-image-0')).filter(node => node.type === 'option');
+  sectionChange(h, 0, 'image', options[2].props.value);
+  let counter = 0;
+  h.request = async (name, args) => { h.calls.push({ name, args }); return { data: name === 'uploadImage' ? { image: `/uploads/products/${++counter}.png` } : { products: [] } }; };
+  await h.submit();
+  assert.deepEqual(h.calls.map(call => call.name), ['uploadImage', 'uploadImage', 'uploadImage', 'createProduct', 'getAllProducts']);
+  const payload = h.calls[3].args[0];
+  assert.deepEqual(payload.images, ['/uploads/products/1.png', '/uploads/products/2.png', '/uploads/products/3.png']);
+  assert.equal(payload.image, payload.images[0]); assert.equal(payload.contentSections[0].image, payload.images[1]);
+  assert.equal(payload.contentSections[0].title, 'Design'); assert.equal(payload.contentSections[0].body, 'Detailed introduction');
+});
+
+test('gallery cover changes and reordering preserve article references without changing stock', async () => {
+  const product = { ...legacyProduct, images: [legacyProduct.image, '/side.jpg', '/back.jpg'], material: 'Canvas', contentSections: [{ title: 'Side', body: 'Description', image: '/side.jpg', caption: 'Side view' }] };
+  const h = setup([product]); edit(h);
+  nodes(h.render()).find(node => node.props['aria-label'] === 'Dùng ảnh 2 làm ảnh bìa').props.onClick();
+  nodes(h.render()).find(node => node.props['aria-label'] === 'Đưa ảnh 3 ra trước').props.onClick();
+  await h.submit();
+  const payload = h.calls.find(call => call.name === 'updateProduct').args[1];
+  assert.equal(payload.image, '/side.jpg'); assert.deepEqual(payload.images, ['/side.jpg', '/back.jpg', legacyProduct.image]);
+  assert.equal(payload.contentSections[0].image, '/side.jpg'); assert.equal(payload.material, 'Canvas');
+  assert.equal(Object.hasOwn(payload, 'variants'), false); assert.equal(h.calls.some(call => call.name === 'uploadImage'), false);
+});
+
+test('empty article sections fail before uploads and removing a referenced image clears its selection', async () => {
+  const h = setup(); h.open(); fill(h); h.selectImage(image); galleryFiles(h, [{ ...image, name: 'detail.png' }]);
+  h.button('+ Thêm mục giới thiệu').props.onClick();
+  await h.submit(); assert.equal(h.calls.length, 0); assert.match(text(h.render()), /Mục 1:/);
+  const options = nodes(h.input(props => props.id === 'content-image-0')).filter(node => node.type === 'option');
+  sectionChange(h, 0, 'image', options[2].props.value);
+  nodes(h.render()).find(node => node.props['aria-label'] === 'Xóa ảnh 2').props.onClick();
+  assert.equal(h.input(props => props.id === 'content-image-0').props.value, '');
+  await h.submit(); assert.equal(h.calls.length, 0);
+});
+
+test('a partial gallery upload failure reuses successful files on retry', async () => {
+  const h = setup(); h.open(); fill(h); h.selectImage(image);
+  galleryFiles(h, [{ ...image, name: 'side.png' }, { ...image, name: 'back.png' }]);
+  let fail = true;
+  h.request = async (name, args) => {
+    h.calls.push({ name, args });
+    if (name === 'uploadImage' && args[0].name === 'back.png' && fail) { fail = false; throw new Error('Back image upload failed'); }
+    return { data: name === 'uploadImage' ? { image: `/uploads/products/${args[0].name}` } : { products: [] } };
+  };
+  await h.submit(); assert.match(text(h.render()), /Back image upload failed|Không lưu được/);
+  assert.equal(h.calls.some(call => call.name === 'createProduct'), false);
+  await h.submit();
+  assert.equal(h.calls.filter(call => call.name === 'uploadImage' && call.args[0].name === 'shoe.png').length, 1);
+  assert.equal(h.calls.filter(call => call.name === 'uploadImage' && call.args[0].name === 'side.png').length, 1);
+  assert.equal(h.calls.filter(call => call.name === 'uploadImage' && call.args[0].name === 'back.png').length, 2);
+  assert.equal(h.calls.filter(call => call.name === 'createProduct').length, 1);
+});
+
+test('rapid submit cannot start a second product upload operation', async () => {
+  const h = setup(); h.open(); fill(h); h.selectImage(image);
+  let resolveUpload;
+  h.request = (name, args) => { h.calls.push({ name, args }); return name === 'uploadImage' ? new Promise(resolve => { resolveUpload = resolve; }) : Promise.resolve({ data: { products: [] } }); };
+  const first = h.submit(); const duplicate = h.submit();
+  assert.equal(h.calls.length, 1);
+  resolveUpload({ data: { image: '/uploads/products/only-once.png' } });
+  await Promise.all([first, duplicate]); assert.equal(h.calls.filter(call => call.name === 'createProduct').length, 1);
 });
 
 test('metadata edits on a product already using variants do not resubmit unchanged inventory', async () => {

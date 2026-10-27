@@ -3,9 +3,12 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { productsAPI, cartAPI } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import ProductGallery from '../components/ProductGallery';
+import ProductStory from '../components/ProductStory';
+import { scrollToProductSection } from '../utils/productContent';
 import { colorKey, hasProductVariants, productColors, productSizes, productStock, validProductSelection, productImageUrl } from '../utils/productVariants';
 import { 
-  FaShoePrints, FaShoppingCart, FaArrowLeft, FaCheckCircle, FaExclamationCircle, 
+  FaShoppingCart, FaArrowLeft, FaCheckCircle, FaExclamationCircle,
   FaTag, FaPalette, FaRuler, FaStar, FaUser
 } from 'react-icons/fa';
 
@@ -183,16 +186,7 @@ const ProductDetail = () => {
         </Link>
 
         <div className="grid lg:grid-cols-2 gap-8">
-          {/* Product Image */}
-          <div className="bg-white rounded-lg shadow p-8 shop-panel shop-product-image">
-            {product.image ? (
-              <img src={productImageUrl(product.image)} alt={product.name} className="w-full h-[500px] object-contain" onError={event => { event.currentTarget.onerror = null; event.currentTarget.src = '/shoe.svg'; }} />
-            ) : (
-              <div className="w-full h-[500px] bg-gray-100 flex items-center justify-center rounded-lg">
-                <FaShoePrints className="text-gray-300 text-8xl" />
-              </div>
-            )}
-          </div>
+          <ProductGallery key={product._id} product={product} />
 
           {/* Product Info */}
           <div className="space-y-6">
@@ -228,9 +222,10 @@ const ProductDetail = () => {
               {/* Description */}
               <div className="mb-6">
                 <h3 className="font-bold text-gray-800 mb-2">Giới thiệu sản phẩm</h3>
-                <p className="text-gray-700 leading-relaxed">
+                <p className="line-clamp-3 whitespace-pre-line break-words text-gray-700 leading-relaxed">
                   {product.description || 'Chưa có mô tả chi tiết cho mẫu giày này.'}
                 </p>
+                <a href="#product-story" onClick={scrollToProductSection} className="mt-2 inline-block text-sm font-semibold text-red-600 hover:underline">Đọc giới thiệu chi tiết ↓</a>
               </div>
 
               {/* Messages */}
@@ -319,8 +314,11 @@ const ProductDetail = () => {
           </div>
         </div>
 
+        <nav className="product-section-nav" aria-label="Thông tin sản phẩm"><a href="#product-story" onClick={scrollToProductSection}>Giới thiệu chi tiết</a><a href="#product-specifications" onClick={scrollToProductSection}>Thông số sản phẩm</a><a href="#product-reviews" onClick={scrollToProductSection}>Đánh giá khách hàng</a></nav>
+        <ProductStory product={product} />
+
         {/* Detailed Information */}
-        <div className="mt-8 bg-white rounded-lg shadow shop-panel">
+        <div id="product-specifications" className="mt-8 bg-white rounded-lg shadow shop-panel">
           <div className="border-b">
             <div className="flex">
               <button className="px-6 py-4 font-semibold border-b-2 border-red-600 text-red-600">
@@ -331,6 +329,7 @@ const ProductDetail = () => {
           <div className="p-6">
             <table className="w-full">
               <tbody className="divide-y">
+                {[['modelCode', 'Mã mẫu'], ['material', 'Chất liệu'], ['origin', 'Xuất xứ'], ['style', 'Kiểu dáng'], ['gender', 'Giới tính sử dụng']].map(([field, label]) => product[field] && <tr key={field}><td className="py-3 pr-4 text-gray-600 font-medium">{label}</td><td className="py-3 break-words text-gray-800">{product[field]}</td></tr>)}
                 {product.brand && (
                   <tr>
                     <td className="py-3 text-gray-600 font-medium flex items-center gap-2">
@@ -373,7 +372,7 @@ const ProductDetail = () => {
         </div>
 
         {/* Reviews Section */}
-        <div className="mt-8 bg-white rounded-lg shadow p-6 shop-panel">
+        <div id="product-reviews" className="mt-8 bg-white rounded-lg shadow p-6 shop-panel">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-gray-800">Đánh giá sản phẩm</h2>
           </div>

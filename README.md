@@ -4,6 +4,14 @@ Website bán giày với React/Vite, Express và MongoDB/Mongoose. Khách hàng 
 
 Trang chủ và trang sản phẩm dùng giao diện catalog với bộ lọc thương hiệu, màu, size, giá và còn hàng; lưới 4 cột trên màn hình lớn, 2 cột trên điện thoại. Có sắp xếp, phân trang và giữ lựa chọn trên URL. Xem [README frontend](frontend/README.md) để chỉnh giao diện. Đợt thiết kế lại ngày 15/10/2026 đạt 114 kiểm tra frontend, build và 12 luồng trên Chrome với dữ liệu mẫu riêng; không thay đổi dữ liệu cửa hàng.
 
+## Bộ ảnh và bài giới thiệu giày
+
+Trong **Quản trị → Sản phẩm → Thêm sản phẩm** hoặc **Chỉnh sửa**, chọn ảnh bìa và thêm nhiều ảnh từ máy tính ở **Ảnh bổ sung**. Mỗi sản phẩm có tối đa **10 ảnh**, gồm ảnh bìa; hỗ trợ JPG, PNG, WebP, tối đa **5 MB/ảnh**. Có xem trước, xóa, đổi thứ tự ảnh bổ sung và chọn ảnh làm bìa.
+
+Phần **Bài giới thiệu chi tiết → + Thêm mục giới thiệu** cho phép viết các mục về thiết kế, thương hiệu, chất liệu, cách bảo quản hoặc chọn size. Mỗi mục có tiêu đề, nội dung và ảnh minh họa chọn từ bộ ảnh, kèm chú thích. Tối đa **12 mục**, **10.000 ký tự/mục**, tổng nội dung **40.000 ký tự**; xuống dòng trống để chia đoạn, bắt đầu các dòng bằng `- ` để tạo danh sách. Các ô mã mẫu, chất liệu, xuất xứ, kiểu dáng và giới tính sử dụng là tùy chọn.
+
+Trang chi tiết hiển thị bộ ảnh có ảnh nhỏ để chọn và cửa sổ phóng to; bên dưới là bài giới thiệu, thông số và đánh giá của khách. Sản phẩm cũ có một ảnh vẫn hiển thị bình thường. Sửa ảnh/nội dung giữ nguyên kho khi không thay đổi các dòng màu/size. Cập nhật đồng thời frontend và backend; không cần seed hoặc chuyển đổi dữ liệu cũ.
+
 ## Chạy dự án
 
 Yêu cầu Node.js >= 22.12 và MongoDB; khuyến nghị Node.js 24 LTS để dùng kho chứng chỉ hệ điều hành. Chạy các lệnh từ thư mục có package.json gốc:

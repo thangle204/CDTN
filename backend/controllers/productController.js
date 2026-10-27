@@ -6,6 +6,7 @@ import mockProducts from '../data/mockProducts.js';
 import { cleanText, httpError, nonNegativeInteger, normalizeSize } from '../utils/validation.js';
 import { applyVariantSummary, hasProductVariants, parseProductVariants, variantKey } from '../utils/productVariants.js';
 import { NON_SALES_STATUSES } from '../utils/orderPricing.js';
+import { assignProductContent } from '../utils/productContent.js';
 
 const categories = ['Sneaker', 'Giày chạy bộ', 'Giày da', 'Sandal', 'Giày thể thao'];
 const databaseAvailable = () => mongoose.connection.readyState === 1;
@@ -21,11 +22,7 @@ const assignProductFields = (product, body, creating = false) => {
   for (const [field, label, max] of [['name', 'Tên giày', 200], ['brand', 'Thương hiệu', 100], ['description', 'Mô tả', 5000]]) {
     if (creating || body[field] !== undefined) product[field] = cleanText(body[field], label, { max });
   }
-  if (creating || body.image !== undefined) {
-    const image = cleanText(body.image, 'Đường dẫn ảnh', { max: 2000 });
-    if (!/^https?:\/\//i.test(image) && !/^\/[^/]/.test(image)) throw httpError(400, 'Ảnh phải là URL http/https hoặc đường dẫn trong website');
-    product.image = image;
-  }
+  assignProductContent(product, body, creating);
   if (creating || body.category !== undefined) {
     if (!categories.includes(body.category)) throw httpError(400, 'Danh mục giày không hợp lệ');
     product.category = body.category;

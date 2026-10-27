@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { productsAPI } from '../utils/api';
 import { productImageUrl } from '../utils/productVariants';
 import { FaPlus, FaEdit, FaEye, FaEyeSlash, FaSearch, FaTrash } from 'react-icons/fa';
+import ProductPhotoPreview from './ProductPhotoPreview';
+import { productImages, productContentPayload, validateProductContentDraft, MAX_PRODUCT_IMAGES, MAX_PRODUCT_SECTIONS } from '../utils/productContent';
 
-const emptyForm = () => ({ name: '', price: '', category: '', description: '', image: '', brand: '', variants: [{ color: '', size: '', quantity: '' }] });
+const emptyForm = () => ({ name: '', price: '', category: '', description: '', image: '', brand: '', material: '', origin: '', gender: '', style: '', modelCode: '', contentSections: [], variants: [{ color: '', size: '', quantity: '' }] });
 const imageTypes = ['image/jpeg', 'image/png', 'image/webp'];
 
 const AdminProducts = () => {
@@ -21,6 +23,8 @@ const AdminProducts = () => {
   const [imagePreview, setImagePreview] = useState('');
   const [formError, setFormError] = useState('');
   const [convertLegacyInventory, setConvertLegacyInventory] = useState(false);
+  const [extraImages, setExtraImages] = useState([]);
+  const saveOperation = useRef(false);
 
   const isLegacyProduct = Boolean(editingProduct && !editingProduct.variants?.length);
   const showVariantEditor = !isLegacyProduct || convertLegacyInventory;
@@ -69,6 +73,34 @@ const AdminProducts = () => {
     setFormData(previous => ({ ...previous, variants: previous.variants.map((variant, row) => row === index ? { ...variant, [field]: value } : variant) }));
   };
 
+  const addGalleryFiles = event => {
+    const files = Array.from(event.target.files || []);
+    setFormError('');
+    event.target.value = '';
+    if (!files.length) return;
+    if (extraImages.length + files.length > MAX_PRODUCT_IMAGES - 1) { setFormError('Chỉ thêm tối đa 9 ảnh bổ sung, cùng 1 ảnh bìa là 10 ảnh.'); return; }
+    if (files.some(file => !imageTypes.includes(file.type) || file.size <= 0 || file.size > 5 * 1024 * 1024)) { setFormError('Mọi ảnh phải là JPG, PNG hoặc WebP, dung lượng tối đa 5 MB mỗi ảnh.'); return; }
+    setExtraImages(previous => [...previous, ...files.map(file => ({ key: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`, file, url: '' }))]);
+  };
+  const updateSection = (index, field, value) => setFormData(previous => ({ ...previous, contentSections: previous.contentSections.map((section, row) => row === index ? { ...section, [field]: value } : section) }));
+  const removeGalleryImage = key => {
+    setExtraImages(previous => previous.filter(image => image.key !== key));
+    setFormData(previous => ({ ...previous, contentSections: previous.contentSections.map(section => section.imageKey === key ? { ...section, imageKey: '' } : section) }));
+  };
+  const moveGalleryImage = (index, delta) => setExtraImages(previous => {
+    const next = [...previous], target = index + delta;
+    if (target < 0 || target >= next.length) return previous;
+    [next[index], next[target]] = [next[target], next[index]];
+    return next;
+  });
+  const useAsCover = media => {
+    const oldCover = { key: media.key, file: imageFile, url: imageFile ? '' : formData.image };
+    const hadCover = Boolean(oldCover.file || oldCover.url);
+    setImageFile(media.file || null);
+    setFormData(previous => ({ ...previous, image: media.file ? '' : media.url, contentSections: previous.contentSections.map(section => ({ ...section, imageKey: section.imageKey === media.key ? 'cover' : section.imageKey === 'cover' && hadCover ? media.key : section.imageKey })) }));
+    setExtraImages(previous => hadCover ? previous.map(image => image.key === media.key ? oldCover : image) : previous.filter(image => image.key !== media.key));
+  };
+
   const totalStock = formData.variants.reduce((total, variant) => {
     const quantity = Number(variant.quantity);
     return total + (Number.isSafeInteger(quantity) && quantity >= 0 ? quantity : 0);
@@ -76,7 +108,7 @@ const AdminProducts = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (saving) return;
+    if (saving || saveOperation.current) return;
     setFormError('');
     const price = Number(formData.price);
     if (!formData.name.trim() || !formData.brand.trim() || !formData.description.trim() || !formData.category) {
@@ -84,6 +116,9 @@ const AdminProducts = () => {
       return;
     }
     if (!imageFile && !formData.image) { setFormError('Vui lòng chọn hình ảnh sản phẩm từ máy tính.'); return; }
+    if (formData.name.trim().length > 200 || formData.brand.trim().length > 100 || formData.description.trim().length > 5000) { setFormError('Tên tối đa 200, thương hiệu 100 và mô tả ngắn 5.000 ký tự. Dùng bài giới thiệu cho nội dung dài hơn.'); return; }
+    const contentError = validateProductContentDraft(formData, extraImages);
+    if (contentError) { setFormError(contentError); return; }
     if (formData.price === '' || !Number.isSafeInteger(price) || price < 0) {
       setFormError('Giá phải là số nguyên không âm.');
       return;
@@ -110,29 +145,41 @@ const AdminProducts = () => {
         const previous = editingProduct.variants[index];
         return variant.color !== previous.color || variant.size !== previous.size || variant.quantity !== previous.quantity;
       }));
+    const placeholderCover = imageFile ? extraImages.some(image => image.url === '/shoe.svg') ? '/shoe-cover-preview.svg' : '/shoe.svg' : formData.image;
+    const pendingExtras = extraImages.map((image, index) => ({ ...image, url: image.file ? `/shoe-gallery-preview-${index + 1}.svg` : image.url }));
     const payload = {
       name: formData.name.trim(),
       brand: formData.brand.trim(),
       description: formData.description.trim(),
       category: formData.category,
-      image: formData.image,
+      image: placeholderCover,
+      ...productContentPayload(formData, pendingExtras, placeholderCover, editingProduct),
       price,
       ...(inventoryChanged ? { variants } : {}),
       ...(editingProduct ? { version: editingProduct.__v ?? 0 } : {}),
     };
+    saveOperation.current = true;
     setSaving(true);
     try {
+      if (editingProduct && (imageFile || extraImages.some(image => image.file))) await productsAPI.validateUpdate(editingProduct._id, { ...payload });
+      let cover = formData.image;
       if (imageFile) {
-        if (editingProduct) {
-          // The new file replaces the old image, which may itself be missing or invalid.
-          // Preflight never saves this fallback; the final update uses the uploaded path.
-          await productsAPI.validateUpdate(editingProduct._id, { ...payload, image: '/shoe.svg' });
-        }
         const { data } = await productsAPI.uploadImage(imageFile);
-        payload.image = data.image;
+        cover = data.image;
         setFormData(previous => ({ ...previous, image: data.image }));
         setImageFile(null);
       }
+      const resolvedExtras = [];
+      for (const media of extraImages) {
+        if (!media.file) { resolvedExtras.push(media); continue; }
+        const { data } = await productsAPI.uploadImage(media.file);
+        const resolved = { ...media, file: null, url: data.image };
+        resolvedExtras.push(resolved);
+        // Keep successful uploads when a later file or the final save fails.
+        setExtraImages(previous => previous.map(image => image.key === media.key ? resolved : image));
+      }
+      payload.image = cover;
+      Object.assign(payload, productContentPayload(formData, resolvedExtras, cover, editingProduct));
       if (editingProduct) {
         await productsAPI.updateProduct(editingProduct._id, payload);
         alert('✅ Cập nhật sản phẩm thành công!');
@@ -147,11 +194,15 @@ const AdminProducts = () => {
     } catch (error) {
       setFormError(error.response?.data?.message || 'Không lưu được sản phẩm. Vui lòng thử lại.');
     } finally {
+      saveOperation.current = false;
       setSaving(false);
     }
   };
 
   const handleEdit = (product) => {
+    const images = productImages(product);
+    const extras = images.slice(1).map((url, index) => ({ key: `existing-${index}`, url, file: null }));
+    setExtraImages(extras);
     setImageFile(null);
     setFormError('');
     setConvertLegacyInventory(false);
@@ -163,6 +214,8 @@ const AdminProducts = () => {
       description: product.description || '',
       image: product.image || '',
       brand: product.brand || '',
+      material: product.material || '', origin: product.origin || '', gender: product.gender || '', style: product.style || '', modelCode: product.modelCode || '',
+      contentSections: (product.contentSections || []).map(section => ({ title: section.title || '', body: section.body || '', caption: section.caption || '', imageKey: section.image === product.image ? 'cover' : extras.find(image => image.url === section.image)?.key || '' })),
       variants: product.variants?.length
         ? product.variants.map(({ color, size, quantity }) => ({ color, size: String(size), quantity: String(quantity) }))
         : (product.sizes?.length ? product.sizes : ['']).map(size => ({ color: product.color || '', size: String(size), quantity: '' })),
@@ -188,6 +241,7 @@ const AdminProducts = () => {
   const resetForm = () => {
     setFormData(emptyForm());
     setImageFile(null);
+    setExtraImages([]);
     setFormError('');
     setConvertLegacyInventory(false);
   };
@@ -389,7 +443,7 @@ const AdminProducts = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tên giày *</label>
-                  <input type="text" name="name" value={formData.name} onChange={handleChange} required className="w-full border border-gray-300 rounded px-3 py-2" />
+                  <input type="text" name="name" value={formData.name} onChange={handleChange} required maxLength={200} className="w-full border border-gray-300 rounded px-3 py-2" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Danh mục *</label>
@@ -416,16 +470,36 @@ const AdminProducts = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả *</label>
-                <textarea name="description" value={formData.description} onChange={handleChange} required rows="3" className="w-full border border-gray-300 rounded px-3 py-2"></textarea>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả ngắn *</label>
+                <textarea name="description" value={formData.description} onChange={handleChange} required maxLength={5000} rows="3" className="w-full border border-gray-300 rounded px-3 py-2"></textarea>
+                <p className="mt-1 text-xs text-gray-500">Nêu đặc điểm chính của mẫu giày. Nội dung dài và ảnh minh họa được nhập ở phần Bài giới thiệu chi tiết bên dưới.</p>
               </div>
 
+              <section className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <h4 className="mb-3 font-semibold">Thông tin chi tiết (không bắt buộc)</h4>
+                <div className="grid gap-4 sm:grid-cols-2">{[['modelCode', 'Mã mẫu', 'Ví dụ: mã do hãng cung cấp'], ['material', 'Chất liệu', 'Ví dụ: da, vải dệt, cao su'], ['origin', 'Xuất xứ', 'Nhập theo thông tin sản phẩm'], ['style', 'Kiểu dáng', 'Ví dụ: cổ thấp, hở gót']].map(([name, label, placeholder]) => <label key={name} className="block text-sm font-medium">{label}<input name={name} value={formData[name] || ''} onChange={handleChange} maxLength={200} placeholder={placeholder} className="mt-1 w-full rounded border border-gray-300 bg-white px-3 py-2" /></label>)}
+                  <label className="block text-sm font-medium">Giới tính sử dụng<select name="gender" value={formData.gender || ''} onChange={handleChange} className="mt-1 w-full rounded border border-gray-300 bg-white px-3 py-2">{['', 'Nam', 'Nữ', 'Unisex', 'Trẻ em'].map(value => <option key={value} value={value}>{value || 'Chưa cung cấp'}</option>)}</select></label>
+                </div>
+              </section>
+
               <div>
-                <label htmlFor="product-image-file" className="block text-sm font-medium text-gray-700 mb-1">Hình ảnh sản phẩm *</label>
+                <label htmlFor="product-image-file" className="block text-sm font-medium text-gray-700 mb-1">Ảnh bìa sản phẩm *</label>
                 <input id="product-image-file" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleImageChange} required={!formData.image && !imageFile} className="w-full rounded border border-gray-300 p-2 text-sm file:mr-4 file:rounded file:border-0 file:bg-red-50 file:px-4 file:py-2 file:font-semibold file:text-red-700" />
                 <p className="mt-1 text-xs text-gray-500">Chọn ảnh JPG, PNG hoặc WebP từ máy tính, tối đa 5 MB.</p>
                 {(imagePreview || formData.image) && <div className="mt-3 flex items-center gap-4"><img src={imagePreview || productImageUrl(formData.image)} alt="Xem trước ảnh sản phẩm" className="h-28 w-28 rounded-lg border object-contain" /><p className="break-all text-sm text-gray-600">{imageFile?.name || 'Ảnh hiện tại. Chọn ảnh khác để thay thế.'}</p></div>}
               </div>
+
+              <section className="rounded-lg border border-gray-200 p-4" aria-label="Bộ ảnh bổ sung">
+                <label htmlFor="product-gallery-files" className="block text-sm font-semibold">Ảnh bổ sung ({extraImages.length}/9)</label>
+                <input id="product-gallery-files" type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={addGalleryFiles} disabled={extraImages.length >= MAX_PRODUCT_IMAGES - 1} className="mt-2 w-full rounded border border-gray-300 p-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-red-50 file:px-3 file:py-2 file:font-semibold file:text-red-700" />
+                <p className="mt-2 text-xs text-gray-500">Có thể chọn nhiều ảnh từ máy tính. Tối đa 10 ảnh gồm ảnh bìa; mỗi ảnh JPG, PNG hoặc WebP không quá 5 MB. Ảnh này cũng có thể chèn vào bài giới thiệu.</p>
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">{extraImages.map((media, index) => <figure key={media.key} className="min-w-0 rounded-lg border border-gray-200 p-2">
+                  <ProductPhotoPreview media={media} alt={`Ảnh bổ sung ${index + 1}`} />
+                  <figcaption className="mt-2 text-sm font-medium">Ảnh {index + 2}</figcaption>
+                  <button type="button" onClick={() => useAsCover(media)} aria-label={`Dùng ảnh ${index + 2} làm ảnh bìa`} className="mt-1 text-sm font-semibold text-red-600 hover:underline">Dùng làm ảnh bìa</button>
+                  <div className="mt-2 flex flex-wrap gap-2"><button type="button" aria-label={`Đưa ảnh ${index + 2} ra trước`} disabled={index === 0} onClick={() => moveGalleryImage(index, -1)} className="rounded border px-2 py-1 disabled:opacity-30">←</button><button type="button" aria-label={`Đưa ảnh ${index + 2} ra sau`} disabled={index === extraImages.length - 1} onClick={() => moveGalleryImage(index, 1)} className="rounded border px-2 py-1 disabled:opacity-30">→</button><button type="button" aria-label={`Xóa ảnh ${index + 2}`} onClick={() => removeGalleryImage(media.key)} className="rounded border px-2 py-1 text-red-600">Xóa</button></div>
+                </figure>)}</div>
+              </section>
 
               {isLegacyProduct && (
                 <section className="rounded-lg border border-gray-200 bg-gray-50 p-4">
@@ -449,6 +523,18 @@ const AdminProducts = () => {
                 </div>
                 <button type="button" disabled={formData.variants.length >= 100} onClick={() => setFormData(previous => ({ ...previous, variants: [...previous.variants, { color: '', size: '', quantity: '' }] }))} className="mt-3 flex items-center gap-2 rounded border border-red-600 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"><FaPlus /> Thêm</button>
               </section>}
+              <section className="space-y-4 rounded-lg border border-gray-200 p-4">
+                <div><h4 className="font-semibold">Bài giới thiệu chi tiết</h4><p className="mt-1 text-sm text-gray-600">Thêm các mục như Giới thiệu thương hiệu, Thiết kế, Chất liệu, Bảo quản hoặc Hướng dẫn chọn size. Xuống dòng để chia đoạn; bắt đầu dòng bằng “- ” để tạo danh sách.</p></div>
+                {(formData.contentSections || []).map((section, index) => <div key={index} className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                  <div className="flex items-center justify-between gap-3"><strong className="text-sm">Mục {index + 1}</strong><button type="button" aria-label={`Xóa mục giới thiệu ${index + 1}`} onClick={() => setFormData(previous => ({ ...previous, contentSections: previous.contentSections.filter((_, row) => row !== index) }))} className="text-sm font-semibold text-red-600">Xóa mục</button></div>
+                  <label className="block text-sm font-medium">Tiêu đề mục<input id={`content-title-${index}`} value={section.title} maxLength={160} onChange={event => updateSection(index, 'title', event.target.value)} placeholder="Ví dụ: Thiết kế và chất liệu" className="mt-1 w-full rounded border border-gray-300 bg-white px-3 py-2" /></label>
+                  <label className="block text-sm font-medium">Nội dung<textarea id={`content-body-${index}`} value={section.body} maxLength={10000} rows={7} required={!section.imageKey} onChange={event => updateSection(index, 'body', event.target.value)} className="mt-1 w-full rounded border border-gray-300 bg-white px-3 py-2" /></label>
+                  <label className="block text-sm font-medium">Ảnh minh họa<select id={`content-image-${index}`} value={section.imageKey || ''} onChange={event => updateSection(index, 'imageKey', event.target.value)} className="mt-1 w-full rounded border border-gray-300 bg-white px-3 py-2"><option value="">Không chèn ảnh</option>{(formData.image || imageFile) && <option value="cover">Ảnh bìa</option>}{extraImages.map((media, photoIndex) => <option key={media.key} value={media.key}>Ảnh {photoIndex + 2}{media.file?.name ? ' — ' + media.file.name : ''}</option>)}</select></label>
+                  {section.imageKey && <label className="block text-sm font-medium">Chú thích ảnh<input id={`content-caption-${index}`} value={section.caption || ''} maxLength={200} onChange={event => updateSection(index, 'caption', event.target.value)} className="mt-1 w-full rounded border border-gray-300 bg-white px-3 py-2" /></label>}
+                </div>)}
+                <button type="button" disabled={(formData.contentSections || []).length >= MAX_PRODUCT_SECTIONS} onClick={() => setFormData(previous => ({ ...previous, contentSections: [...(previous.contentSections || []), { title: '', body: '', imageKey: '', caption: '' }] }))} className="rounded-lg border border-red-600 px-4 py-2 text-sm font-semibold text-red-600 disabled:opacity-50">+ Thêm mục giới thiệu</button>
+                <p className="text-xs text-gray-500">Tối đa 12 mục, tổng nội dung 40.000 ký tự. Không cần nhập mã HTML.</p>
+              </section>
               </fieldset>
 
               <div className="flex gap-2 pt-4">

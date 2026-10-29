@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { connectDB, hasMongoConfiguration } from './config/db.js';
 import { createApp } from './app.js';
 import { startDatabaseConnection } from './utils/databaseStartup.js';
+import { startPaymentExpiryWorker } from './utils/paymentExpiry.js';
 
 if (!process.env.JWT_SECRET) {
   console.error('Cần cấu hình JWT_SECRET trong backend/.env trước khi khởi động');
@@ -10,6 +11,7 @@ if (!process.env.JWT_SECRET) {
 } else {
   const port = Number(process.env.PORT || 5000);
   let databaseStartup;
+  let paymentExpiryWorker;
   let shuttingDown = false;
   const server = createApp().listen(port, () => {
     if (shuttingDown) return;
@@ -21,11 +23,13 @@ if (!process.env.JWT_SECRET) {
       shouldRetry: hasMongoConfiguration,
       onRetry: (delay) => console.warn('Sẽ thử kết nối lại MongoDB sau ' + delay / 1000 + ' giây'),
     });
+    paymentExpiryWorker = startPaymentExpiryWorker();
   });
   const shutdown = (exitCode = 0) => {
     if (shuttingDown) return;
     shuttingDown = true;
     databaseStartup?.stop();
+    paymentExpiryWorker?.stop();
     server.close(async () => {
       try {
         await mongoose.disconnect();

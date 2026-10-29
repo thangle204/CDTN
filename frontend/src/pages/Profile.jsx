@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
 import { FaUser, FaEnvelope, FaPhone, FaLock, FaEdit, FaSave, FaTimes } from 'react-icons/fa';
 
 const Profile = () => {
@@ -177,6 +178,7 @@ const Profile = () => {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4 max-w-3xl">
         <h1 className="text-3xl font-bold mb-8 text-gray-800">Thông tin tài khoản</h1>
+        <Link to="/my-vouchers" className="mb-6 flex items-center justify-between rounded-xl border bg-white p-5 font-semibold text-red-600">Mã ưu đãi của tôi <span>Khám phá quà riêng và mã đã lưu →</span></Link>
 
         {success && (
           <div className="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 rounded mb-6">

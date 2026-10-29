@@ -13,6 +13,12 @@ Frontend dùng /api theo mặc định. Vite chuyển tiếp tới http://localh
 
 Giao diện hỗ trợ chọn size giày, giỏ theo từng size, checkout, voucher, đơn hàng, khôi phục mật khẩu và quản trị. Backend xác định giá cuối cùng và xác nhận thanh toán.
 
+Ưu đãi đã có trang **Kho ưu đãi** (`/offers`) và **Mã của tôi** (`/my-vouchers`), dùng `VoucherCard.jsx` và `vouchers.css`. Khách xem/lưu mã công khai hoặc dùng ngay qua giỏ đến checkout; lưu không giữ lượt. Mã riêng được cấp cho đúng tài khoản đủ điều kiện và không xuất hiện trong kho công khai. Checkout dùng `VoucherSelector.jsx` để gợi ý mã tiết kiệm nhất, hiển thị lý do chưa dùng được và không tự thay lựa chọn của khách. Phản hồi cũ sau đổi tài khoản/giỏ không ghi đè kết quả mới.
+
+**Quản trị → Mã ưu đãi** hỗ trợ công khai/riêng, lần mua đầu/quà sau giao, lượt mỗi khách, trần phần trăm và giờ Việt Nam UTC+7. Form chỉ gửi trường sửa và phiên bản; không đổi giờ gốc khi sửa mô tả. Mã đã phát hành giữ quyền lợi ổn định; tạo chương trình mới để đổi điều kiện. Đơn VNPAY mới có hạn chờ 30 phút và thông báo tự đối soát; hủy gián đoạn có nút tiếp tục xử lý. Xem [quy tắc đầy đủ](../VOUCHER_REVIEW.md).
+
+Kiểm tra ngày **28–29/10/2026**: **381 backend, 201 frontend đạt**, build thành công; 7 ca HTTP/MongoDB trong database thử nghiệm riêng và 13 trường hợp Chrome (1440/390/320px) đạt. Chrome chặn mọi API, xử lý 14 thao tác ghi trong bộ nhớ. Chưa thử một giao dịch VNPAY mới qua worker tự động với cổng thật; các phản hồi QueryDR trong kiểm tra worker được giả lập.
+
 Trang chi tiết giày có bộ ảnh trong `ProductGallery.jsx`, bài giới thiệu trong `ProductStory.jsx` và giao diện chung tại `product-detail.css`. Khách chọn ảnh nhỏ, bấm ảnh chính để phóng to, dùng phím mũi tên chuyển ảnh hoặc Escape để đóng. Các liên kết giới thiệu/thông số/đánh giá cuộn đến nội dung mà vẫn giữ màu và size đang chọn.
 
 Để nhập nội dung, mở **Quản trị → Sản phẩm → Thêm sản phẩm/Chỉnh sửa**:

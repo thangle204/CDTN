@@ -12,6 +12,7 @@ const response = () => ({ json(body) { this.body = body; return this; } });
 const valueAt = (document, path) => path.split('.').reduce((value, key) => value?.[key], document);
 const matches = (document, filter) => Object.entries(filter).every(([key, condition]) => {
   if (key === '$or') return condition.some(branch => matches(document, branch));
+  if (key === '$and') return condition.every(branch => matches(document, branch));
   const value = valueAt(document, key);
   if (condition == null || typeof condition !== 'object') return value === condition;
   return Object.entries(condition).every(([operator, expected]) => {

@@ -110,6 +110,9 @@ const orderSchema = new mongoose.Schema({
       code: String,
       type: { type: String, enum: ['fixed', 'percent', 'shipping'] },
       discount: { type: Number, min: 0, validate: Number.isSafeInteger },
+      maxDiscount: Number,
+      reservationToken: String,
+      wallet: mongoose.Schema.Types.ObjectId,
     }, { _id: false }),
     default: undefined,
   },
@@ -125,6 +128,12 @@ const orderSchema = new mongoose.Schema({
   deliveredAt: Date,
   stockRestored: { type: Boolean, default: false },
   cancellationLock: { type: String, default: null },
+  cancellationReceipt: String,
+  cancellationRecoveryRequired: { type: Boolean, default: false },
+  paymentDeadline: Date,
+  paymentExpiryNextAt: Date,
+  paymentExpiryReviewRequired: { type: Boolean, default: false },
+  autoCancelledAt: Date,
 }, { timestamps: true });
 
 const Order = mongoose.model('Order', orderSchema);

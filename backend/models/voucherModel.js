@@ -2,6 +2,21 @@ import mongoose from "mongoose";
 
 const voucherSchema = mongoose.Schema(
   {
+    visibility: { type: String, enum: ['public', 'private'], default: 'public' },
+    eligibility: { type: String, enum: ['all', 'first_order', 'after_purchase'], default: 'all' },
+    perCustomerLimit: { type: Number, min: 1, default: null, validate: value => value == null || Number.isSafeInteger(value) },
+    maxDiscount: { type: Number, min: 1, default: null, validate: value => value == null || Number.isSafeInteger(value) },
+    validityDays: { type: Number, min: 1, max: 365, default: 14, validate: Number.isSafeInteger },
+    reservations: { type: [new mongoose.Schema({
+      token: { type: String, required: true },
+      order: { type: mongoose.Schema.Types.ObjectId, required: true },
+      user: { type: mongoose.Schema.Types.ObjectId, required: true },
+      wallet: mongoose.Schema.Types.ObjectId,
+      createdAt: { type: Date, default: Date.now },
+    }, { _id: false })], default: [] },
+    releaseReceipts: { type: [String], default: [] },
+    releaseHolds: { type: [String], default: [] },
+    walletCount: { type: Number, default: 0, min: 0, validate: Number.isSafeInteger },
     code: { 
       type: String, 
       required: true, 
@@ -72,8 +87,8 @@ const voucherSchema = mongoose.Schema(
   {
     timestamps: true,
     optimisticConcurrency: true,
-    toJSON: { transform(_document, result) { delete result.deliveryReturnReceipts; delete result.deliveryReturnHolds; return result; } },
-    toObject: { transform(_document, result) { delete result.deliveryReturnReceipts; delete result.deliveryReturnHolds; return result; } }
+    toJSON: { transform(_document, result) { for (const key of ['deliveryReturnReceipts', 'deliveryReturnHolds', 'reservations', 'releaseReceipts', 'releaseHolds']) delete result[key]; return result; } },
+    toObject: { transform(_document, result) { for (const key of ['deliveryReturnReceipts', 'deliveryReturnHolds', 'reservations', 'releaseReceipts', 'releaseHolds']) delete result[key]; return result; } }
   }
 );
 

@@ -4,6 +4,7 @@ import Navbar from './components/Navbar';
 import StoreFooter from './components/StoreFooter';
 import AdminRoute from './components/AdminRoute';
 import './components/product-detail.css';
+import './components/vouchers.css';
 
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -18,6 +19,7 @@ import VnpayReturn from './pages/VnpayReturn';
 import MyOrders from './pages/MyOrders';
 import Profile from './pages/Profile';
 import Admin from './pages/Admin';
+import Vouchers from './pages/Vouchers';
 
 function App() {
   
@@ -41,6 +43,8 @@ function App() {
             <Route path="/payment/vnpay/return" element={<VnpayReturn />} />
             <Route path="/my-orders" element={<MyOrders />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/offers" element={<Vouchers />} />
+            <Route path="/my-vouchers" element={<Vouchers mine />} />
             <Route element={<AdminRoute />}>
                 <Route path="/admin" element={<Admin />} />
             </Route>

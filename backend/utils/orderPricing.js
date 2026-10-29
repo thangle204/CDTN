@@ -34,6 +34,10 @@ export const calculateOrderPricing = (itemsPrice, voucher = null) => {
     } else if (voucher.type === 'percent') {
       if (voucher.discount > 100) throw orderError(400, 'Mức giảm phần trăm phải từ 0 đến 100');
       discountAmount = Math.min(itemsPrice, Math.round(itemsPrice * (voucher.discount / 100)));
+      if (voucher.maxDiscount != null) {
+        if (!Number.isSafeInteger(voucher.maxDiscount) || voucher.maxDiscount <= 0) throw orderError(400, 'Mức giảm tối đa không hợp lệ');
+        discountAmount = Math.min(discountAmount, voucher.maxDiscount);
+      }
     } else {
       discountAmount = Math.min(itemsPrice, voucher.discount);
     }

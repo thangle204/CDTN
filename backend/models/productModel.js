@@ -88,6 +88,7 @@ const productSchema = mongoose.Schema(
         // The receipt is written atomically with returned sellable stock.
         // Retain it so delayed retries cannot import the same shoes twice.
         deliveryReturnReceipts: { type: [String], default: [] },
+        cancellationReceipts: { type: [String], default: [] },
         reviews: [reviewSchema],
         rating: {
             type: Number,
@@ -127,6 +128,7 @@ const productSchema = mongoose.Schema(
             transform(_document, result) {
                 delete result.checkoutReservations;
                 delete result.deliveryReturnReceipts;
+                delete result.cancellationReceipts;
                 return result;
             },
         },
@@ -134,6 +136,7 @@ const productSchema = mongoose.Schema(
             transform(_document, result) {
                 delete result.checkoutReservations;
                 delete result.deliveryReturnReceipts;
+                delete result.cancellationReceipts;
                 return result;
             },
         },

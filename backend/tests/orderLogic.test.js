@@ -23,6 +23,7 @@ const checkoutCarts = new Map();
 const matchingVariant = (item, filter) => item?.variants?.find((row) => row.color === filter.variants?.$elemMatch.color && row.size === filter.variants?.$elemMatch.size);
 const stockMatches = (item, filter) => {
   if (!item) return false;
+  if (filter.cancellationReceipts?.$ne && item.cancellationReceipts?.includes(filter.cancellationReceipts.$ne)) return false;
   if (filter.__v != null && item.__v !== filter.__v) return false;
   if (filter.countInStock?.$gte != null && item.countInStock < filter.countInStock.$gte) return false;
   if (filter.countInStock?.$lte != null && item.countInStock > filter.countInStock.$lte) return false;
@@ -36,6 +37,7 @@ const stockMatches = (item, filter) => {
   return true;
 };
 const applyStockUpdate = (item, filter, update) => {
+  if (update.$addToSet?.cancellationReceipts) item.cancellationReceipts = [...new Set([...(item.cancellationReceipts || []), update.$addToSet.cancellationReceipts])];
   if (update.$inc.countInStock !== undefined) item.countInStock += update.$inc.countInStock;
   if (update.$inc['variants.$.quantity'] != null) matchingVariant(item, filter).quantity += update.$inc['variants.$.quantity'];
   if (update.$addToSet?.checkoutReservations) item.checkoutReservations = [...new Set([...(item.checkoutReservations || []), update.$addToSet.checkoutReservations])];
@@ -395,6 +397,7 @@ const mockCancellation = (t, orderData, products, options = {}) => {
     return { matchedCount: 1 };
   });
   t.mock.method(Product, 'exists', async (filter) => products.some((entry) => String(entry._id) === String(filter._id)));
+  t.mock.method(Product, 'findById', async value => products.find(item => String(item._id) === String(value)) || null);
   return { current: () => store, restores: () => restores };
 };
 
@@ -417,18 +420,25 @@ test('Hủy đồng thời và retry không hoàn tồn kho hai lần', async (t
   assert.equal(state.restores(), 1);
 });
 
-test('Hủy lỗi giữa các sản phẩm: bù lại phần đã hoàn và trả trạng thái cũ', async (t) => {
+test('Hủy lỗi giữa các sản phẩm: giữ kết quả đã hoàn và thử lại không cộng kho hai lần', async (t) => {
   const first = product({ countInStock: 3 });
   const second = product({ countInStock: 3 });
   const userId = id();
   const orderId = id();
-  const state = mockCancellation(t, { _id: orderId, user: userId, orderItems: [cartItem(first, { quantity: 2 }), cartItem(second, { quantity: 2 })], shippingAddress: shipping, totalPrice: 830000 }, [first, second], { failProduct: String(second._id) });
+  const options = { failProduct: String(second._id) };
+  const state = mockCancellation(t, { _id: orderId, user: userId, orderItems: [cartItem(first, { quantity: 2 }), cartItem(second, { quantity: 2 })], shippingAddress: shipping, totalPrice: 830000 }, [first, second], options);
   const res = response();
   await cancelOrder({ params: { id: String(orderId) }, user: { _id: userId, isAdmin: false } }, res);
-  assert.equal(res.statusCode, 500);
-  assert.equal(first.countInStock, 3);
+  assert.equal(res.statusCode, 503);
+  assert.equal(first.countInStock, 5);
   assert.equal(second.countInStock, 3);
-  assert.equal(state.current().orderStatus, 'Đang xử lý');
+  assert.equal(state.current().orderStatus, 'Đã hủy');
+  assert.ok(state.current().cancellationLock);
+  options.failProduct = null;
+  const retry = response();
+  await cancelOrder({ params: { id: String(orderId) }, user: { _id: userId, isAdmin: false } }, retry);
+  assert.equal(retry.statusCode, 200);
+  assert.equal(first.countInStock, 5);assert.equal(second.countInStock, 5);
   assert.equal(state.current().cancellationLock, null);
 });
 
@@ -638,7 +648,7 @@ test('Hủy đơn không cộng kho tổng khi biến thể đã bị xóa hoặ
   const req = { params: { id: String(orderId) }, user: { _id: owner, isAdmin: false } };
   const removedVariant = response();
   await cancelOrder(req, removedVariant);
-  assert.equal(removedVariant.statusCode, 409);
+  assert.equal(removedVariant.statusCode, 503);
   assert.equal(item.countInStock, 5);
   assert.equal(item.variants[0].quantity, 5);
   assert.equal(state.current().stockRestored, false);
@@ -646,7 +656,7 @@ test('Hủy đơn không cộng kho tổng khi biến thể đã bị xóa hoặ
   state.current().orderItems[0].color = '';
   const oldOrder = response();
   await cancelOrder(req, oldOrder);
-  assert.equal(oldOrder.statusCode, 409);
+  assert.equal(oldOrder.statusCode, 503);
   assert.equal(item.countInStock, 5);
   assert.equal(item.variants[0].quantity, 5);
 });

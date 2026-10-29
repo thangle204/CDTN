@@ -102,6 +102,7 @@ const releaseVoucherOnce = async (order) => {
     }, {
       $inc: { usedCount: -1, __v: 1 },
       $addToSet: { deliveryReturnReceipts: token, deliveryReturnHolds: token },
+      ...(order.voucher.reservationToken ? { $pull: { reservations: { token: order.voucher.reservationToken } } } : {}),
     });
     if (result.matchedCount === 1) return;
   } catch { /* A driver error may follow a successful atomic write. */ }

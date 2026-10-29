@@ -35,6 +35,7 @@ export const createVnpayPayment = async (req, res) => {
       throw orderError(400, 'Thanh toán VNPAY yêu cầu số tiền từ 5.000đ và nằm trong giới hạn cho phép');
     }
     const now = new Date();
+    if (order.paymentDeadline && new Date(order.paymentDeadline) <= now) throw orderError(409, 'Đơn đã hết 30 phút chờ thanh toán và đang được đối soát. Vui lòng kiểm tra trong Đơn hàng của tôi');
     let attempt = order.vnpayPayments?.find(payment => payment.state === 'pending' && new Date(payment.expiresAt) > now);
     if (attempt && (attempt.amount !== order.totalPrice || attempt.tmnCode !== config.tmnCode)) {
       throw orderError(409, 'Thông tin thanh toán đã thay đổi. Vui lòng liên hệ cửa hàng để đối soát');
@@ -44,7 +45,8 @@ export const createVnpayPayment = async (req, res) => {
       attempt = {
         txnRef: String(order._id) + randomBytes(8).toString('hex'), tmnCode: config.tmnCode,
         amount: order.totalPrice, createdAt: now,
-        expiresAt: new Date(now.getTime() + config.timeoutMinutes * 60000), state: 'pending',
+        expiresAt: new Date(Math.min(now.getTime() + config.timeoutMinutes * 60000,
+          order.paymentDeadline ? new Date(order.paymentDeadline).getTime() : Infinity)), state: 'pending',
       };
       // Validate URL inputs before publishing an attempt. The amount always
       // comes from the saved order, never from the browser request body.
@@ -69,7 +71,7 @@ export const createVnpayPayment = async (req, res) => {
 // Both callers must verify their own gateway signature before reaching this
 // private function. Read again after network I/O and retain the same atomic
 // receipt/cancellation/refund rules for IPN and QueryDR.
-const recordVerifiedReceipt = async (parameters, source) => {
+export const recordVerifiedReceipt = async (parameters, source) => {
     const outcome = (code, message) => ({ code, message });
     if (!databaseReady()) return outcome('99', 'Database unavailable');
     const orderId = orderIdOf(parameters.vnp_TxnRef);

@@ -309,6 +309,9 @@ const MyOrders = () => {
                   </p>
                   {order.orderStatus === 'Đã hủy' && order.isPaid && <p className="text-sm mt-2 text-blue-800"><strong>Hoàn tiền:</strong> {order.refundStatus === 'refunded' ? 'Cửa hàng đã xác nhận hoàn tiền' : 'Đang chờ cửa hàng xử lý hoàn tiền'}{order.refundedAt && ` (${new Date(order.refundedAt).toLocaleString('vi-VN')})`}</p>}
                   {order.paymentMethod === 'VNPAY' && order.paymentReviewRequired && <p className="mt-2 text-sm text-amber-900">Cần đối soát khoản thanh toán dư; chưa xác nhận hoàn tiền toàn bộ. Vui lòng liên hệ cửa hàng để được hỗ trợ.</p>}
+                  {order.paymentMethod === 'VNPAY' && !order.isPaid && order.orderStatus !== 'Đã hủy' && order.paymentDeadline && <p className="mt-2 text-sm text-gray-700">Hạn chờ thanh toán: {new Date(order.paymentDeadline).toLocaleString('vi-VN')}. Sau hạn, hệ thống đối soát trước khi tự hủy và trả lượt mã.</p>}
+                  {order.paymentExpiryReviewRequired && !order.isPaid && order.orderStatus !== 'Đã hủy' && <p className="mt-2 text-sm text-amber-900">Chưa xác định được kết quả VNPAY. Hệ thống đang kiểm tra lại; đơn và ưu đãi được giữ để đối soát.</p>}
+                  {order.autoCancelledAt && <p className="mt-2 text-sm text-gray-600">Đơn tự hủy sau thời hạn chờ thanh toán và kiểm tra kết quả.</p>}
                 </div>
 
                 {canPayWithVnpay(order) && <VnpayPaymentButton order={order} disabled={canceling} onOrderUpdated={updated => {
@@ -322,7 +325,7 @@ const MyOrders = () => {
                 <DeliveryReturnSummary order={order} />
                 {canReviewOrder(order) && <OrderReviews order={order} />}
                 <div className="mt-4 flex gap-3">
-                  {order.orderStatus === 'Đang xử lý' && (
+                  {(order.orderStatus === 'Đang xử lý' || order.cancellationPending) && (
                     <button
                       onClick={() => handleCancelOrder(order._id)}
                       disabled={canceling}
@@ -335,7 +338,7 @@ const MyOrders = () => {
                       ) : (
                         <>
                           <FaTimesCircle />
-                          Hủy đơn hàng
+                          {order.cancellationPending ? 'Tiếp tục hoàn tất hủy đơn' : 'Hủy đơn hàng'}
                         </>
                       )}
                     </button>

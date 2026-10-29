@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { cartAPI, ordersAPI, vouchersAPI } from '../utils/api';
 import { productImageUrl } from '../utils/productVariants';
 import { canPayWithVnpay, vnpaySandboxUrl } from '../utils/vnpay';
 import VnpayPaymentButton from '../components/VnpayPaymentButton';
+import VoucherSelector from '../components/VoucherSelector';
 import { FaMapMarkerAlt, FaCreditCard, FaShoppingBag, FaCheckCircle, FaTag, FaTimes } from 'react-icons/fa';
 
 const SHIPPING_FEE = 30000;
@@ -14,6 +15,8 @@ const inputClass = 'w-full border border-gray-300 rounded-lg px-4 py-2 focus:out
 const Checkout = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const requestedVoucher = new URLSearchParams(location.search).get('voucher');
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -30,11 +33,15 @@ const Checkout = () => {
   const mounted = useRef(true);
   const accountRef = useRef(user?._id);
   const submitRef = useRef(null);
+  const voucherRequest = useRef(0);
+  const voucherBusy = useRef(false);
+  const voucherContext = useRef('');
+  const requestedApplied = useRef('');
   accountRef.current = user?._id;
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { navigate('/login', { replace: true, state: { from: '/checkout' } }); return; }
+    if (!user) { navigate('/login', { replace: true, state: { from: '/checkout' + (location.search || '') } }); return; }
     let active = true;
     setShippingInfo(previous => ({ ...previous, name: previous.name || user.name || '', phone: previous.phone || user.phone || '' }));
     const loadCheckout = async () => {
@@ -43,7 +50,7 @@ const Checkout = () => {
         const [cart, availableVouchers] = await Promise.allSettled([cartAPI.getCart(), vouchersAPI.getActiveVouchers()]);
         if (!active) return;
         if (cart.status === 'rejected') throw cart.reason;
-        if (!cart.value.data.length) { navigate('/cart', { replace: true }); return; }
+        if (!cart.value.data.length) { navigate(requestedVoucher ? `/cart?voucher=${encodeURIComponent(requestedVoucher)}` : '/cart', { replace: true }); return; }
         setCartItems(cart.value.data);
         if (availableVouchers.status === 'fulfilled') setVouchers(availableVouchers.value.data);
         else setVoucherError('Chưa tải được ưu đãi. Bạn vẫn có thể nhập mã voucher.');
@@ -70,24 +77,42 @@ const Checkout = () => {
   }, [user?._id]);
 
   const subtotal = cartItems.reduce((total, item) => total + Number(item.product?.price ?? item.price) * item.quantity, 0);
+  voucherContext.current = `${user?._id || ''}:${subtotal}`;
+  useEffect(() => {
+    voucherRequest.current += 1; voucherBusy.current = false;
+    setQuote(null);setVoucherError('');setApplyingVoucher(false);
+    return () => { voucherRequest.current += 1; };
+  }, [user?._id, subtotal]);
   const totals = quote || { itemsPrice: subtotal, shippingPrice: SHIPPING_FEE, discountAmount: 0, totalPrice: subtotal + SHIPPING_FEE };
   const address = [shippingInfo.address, shippingInfo.ward, shippingInfo.district, shippingInfo.city].filter(Boolean).join(', ');
 
   const applyVoucher = async (code) => {
+    if (voucherBusy.current || submitting) return;
     if (!code.trim()) { setVoucherError('Vui lòng nhập mã voucher.'); return; }
     setApplyingVoucher(true);
+    voucherBusy.current = true;
+    const request = ++voucherRequest.current, context = voucherContext.current;
+    const current = () => request === voucherRequest.current && context === voucherContext.current;
     setVoucherError('');
     try {
       const { data } = await vouchersAPI.applyVoucher(code.trim(), subtotal);
+      if (!current()) return;
       setQuote(data);
       setVoucherCode(data.voucher.code);
     } catch (failure) {
+      if (!current()) return;
       setQuote(null);
       setVoucherError(failure.response?.data?.message || 'Không thể áp dụng voucher.');
     } finally {
-      setApplyingVoucher(false);
+      if (current()) { voucherBusy.current = false;setApplyingVoucher(false); }
     }
   };
+  useEffect(() => {
+    const key = `${user?._id}:${requestedVoucher}`;
+    if (!loading && cartItems.length && requestedVoucher && requestedApplied.current !== key) {
+      requestedApplied.current = key;void applyVoucher(requestedVoucher);
+    }
+  }, [loading, user?._id, requestedVoucher]);
 
   const submitOrder = async () => {
     if (submitting || submitRef.current || applyingVoucher || !cartItems.length) return;
@@ -233,7 +258,7 @@ const Checkout = () => {
               </form>
               {voucherError && <p role="alert" className="text-sm text-red-600 mt-3">{voucherError}</p>}
               {quote && <p className="flex items-center justify-between gap-2 bg-green-50 text-green-700 p-3 rounded-lg mt-3 text-sm"><span>Đã áp dụng {quote.voucher.code}</span><button aria-label="Bỏ voucher" disabled={submitting} onClick={() => { setQuote(null); setVoucherCode(''); setVoucherError(''); }}><FaTimes /></button></p>}
-              {vouchers.length > 0 && <details className="mt-4"><summary className="cursor-pointer text-sm font-semibold text-red-600">Chọn mã ưu đãi ({vouchers.length})</summary><div className="mt-3 space-y-2">{vouchers.map(voucher => <button key={voucher._id} disabled={applyingVoucher || submitting} onClick={() => applyVoucher(voucher.code)} className="text-left w-full rounded-lg border border-dashed border-red-300 p-3 hover:bg-red-50 disabled:opacity-50"><strong className="text-red-600">{voucher.code}</strong><p className="text-sm mt-1">{voucher.description}</p><p className="text-xs text-gray-500 mt-1">Đơn tối thiểu {money(voucher.minOrder)}</p></button>)}</div></details>}
+              <VoucherSelector userId={user?._id} subtotal={subtotal} onChoose={applyVoucher} selectedCode={quote?.voucher?.code} busy={applyingVoucher || submitting} />
             </section>
             <section className="bg-white rounded-lg shadow p-6 shop-panel">
               <h2 className="text-xl font-bold mb-5">Tóm tắt đơn hàng</h2>

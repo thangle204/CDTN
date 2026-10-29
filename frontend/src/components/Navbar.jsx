@@ -51,6 +51,7 @@ const Navbar = () => {
             {loading ? <span role="status">Đang tải tài khoản...</span> : user ? (
               <>
                 <span className="store-header__greeting">Xin chào, {user.name || user.email}</span>
+                <Link to="/my-vouchers">Mã của tôi</Link>
                 <button type="button" onClick={handleLogout}>Đăng xuất</button>
               </>
             ) : (
@@ -104,6 +105,7 @@ const Navbar = () => {
         <nav id="store-category-navigation" className="store-header__container store-header__nav" aria-label="Danh mục giày">
           <Link to="/" className={location.pathname === '/' ? 'is-active' : ''} aria-current={location.pathname === '/' ? 'page' : undefined}>Trang chủ</Link>
           <Link to="/products" className={location.pathname === '/products' && !selectedCategory ? 'is-active' : ''} aria-current={location.pathname === '/products' && !selectedCategory ? 'page' : undefined}>Tất cả giày</Link>
+          <Link to="/offers" className={location.pathname === '/offers' || location.pathname === '/my-vouchers' ? 'is-active' : ''}>Ưu đãi</Link>
           {categories.map((category) => (
             <Link
               key={category}

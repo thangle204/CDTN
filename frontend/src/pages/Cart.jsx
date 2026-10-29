@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { cartAPI } from '../utils/api';
 import { hasProductVariants, productStock, validProductSelection, sharesCartStock, productImageUrl } from '../utils/productVariants';
@@ -8,6 +8,8 @@ import { FaShoppingCart, FaTrash, FaMinus, FaPlus } from 'react-icons/fa';
 const money = value => Number(value || 0).toLocaleString('vi-VN') + '₫';
 
 const Cart = () => {
+  const location = useLocation();
+  const requestedVoucher = new URLSearchParams(location.search).get('voucher');
   const { user, loading: authLoading } = useAuth();
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -129,9 +131,9 @@ const Cart = () => {
               <div className="flex justify-between"><dt>Phí vận chuyển</dt><dd>{money(30000)}</dd></div>
               <div className="flex justify-between text-lg font-bold border-t pt-4"><dt>Tổng dự kiến</dt><dd className="text-red-600">{money(total + 30000)}</dd></div>
             </dl>
-            <p className="text-sm text-gray-500 my-4">Nhập voucher tại bước thanh toán để nhận ưu đãi.</p>
+            <p className="text-sm text-gray-500 my-4">{requestedVoucher ? `Mã ${requestedVoucher} sẽ được kiểm tra ở bước thanh toán.` : 'Chọn mã phù hợp tại bước thanh toán.'} <Link to="/offers" className="font-semibold text-red-600">Xem ưu đãi →</Link></p>
             {hasUnavailableItem && <p role="alert" className="text-sm text-red-600 mb-4">Vui lòng kiểm tra size và số lượng các mẫu giày trước khi thanh toán.</p>}
-            <Link to="/checkout" aria-disabled={updating || hasUnavailableItem} onClick={event => { if (updating || hasUnavailableItem) event.preventDefault(); }} className={'block text-center bg-red-600 text-white py-3 rounded-lg font-semibold ' + (updating || hasUnavailableItem ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-700')}>Tiến hành thanh toán</Link>
+            <Link to={requestedVoucher ? `/checkout?voucher=${encodeURIComponent(requestedVoucher)}` : '/checkout'} aria-disabled={updating || hasUnavailableItem} onClick={event => { if (updating || hasUnavailableItem) event.preventDefault(); }} className={'block text-center bg-red-600 text-white py-3 rounded-lg font-semibold ' + (updating || hasUnavailableItem ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-700')}>Tiến hành thanh toán</Link>
           </aside>
         </div>
       )}

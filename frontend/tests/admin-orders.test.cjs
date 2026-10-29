@@ -142,7 +142,7 @@ test('admin reconciliation requires selecting an exact reference when an order h
 });
 
 test('admin reconciliation hides actions for orders without attempts, paid orders and active locks', () => {
-  for (const changes of [{ vnpayPayments: [] }, { isPaid: true }, { cancellationLock: 'busy' }, { checkoutFinalized: false }, { deliveryReturn: { state: 'processing' } }, { paymentMethod: 'BANK' }]) {
+  for (const changes of [{ vnpayPayments: [] }, { isPaid: true }, { cancellationLock: 'busy' }, { cancellationPending: true }, { checkoutFinalized: false }, { deliveryReturn: { state: 'processing' } }, { paymentMethod: 'BANK' }]) {
     const h = setup([orderOf({ paymentMethod: 'VNPAY', isPaid: false, vnpayPayments: [{ txnRef: 'attempt-1', state: 'pending' }], ...changes })]);
     assert.equal(nodes(h.render()).some(node => node.type === 'button' && text(node) === 'Đối chiếu với VNPAY'), false);
   }

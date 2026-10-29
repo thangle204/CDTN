@@ -21,8 +21,9 @@ before(async () => {
   const plugin = {
     name: 'real-profile-provider-mocks',
     setup(build) {
-      build.onResolve({ filter: /^react(?:\/jsx-runtime)?$|^react-icons\/fa$|utils\/api(?:\.js)?$/ }, args => ({ path: args.path, namespace: 'profile-mock' }));
+      build.onResolve({ filter: /^react(?:\/jsx-runtime)?$|^react-router-dom$|^react-icons\/fa$|utils\/api(?:\.js)?$/ }, args => ({ path: args.path, namespace: 'profile-mock' }));
       build.onLoad({ filter: /.*/, namespace: 'profile-mock' }, args => {
+        if (args.path === 'react-router-dom') return { contents: 'export const Link="a";' };
         if (args.path === 'react') return { contents: `
           export const createContext=()=>({Provider:'provider'});
           export const useContext=()=>globalThis.__profileSessionTest.auth;

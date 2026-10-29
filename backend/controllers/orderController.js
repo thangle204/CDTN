@@ -14,6 +14,8 @@ import { checkoutCartKey } from '../utils/checkoutCart.js';
 import { releaseCheckoutReservations } from '../utils/checkoutReservations.js';
 import { publicOrder, publicCustomerOrder } from '../utils/orderPresentation.js';
 import { getVnpayConfig } from '../utils/vnpay.js';
+import { checkVoucherCustomer, reserveVoucher, releaseVoucherUsage, finishVoucherRelease } from '../utils/voucherUsage.js';
+import { grantCustomerVouchers } from './voucherController.js';
 
 const CHECKOUT_LOCK_MS = 10 * 60 * 1000;
 const COMMITTED_ORDERS = { checkoutState: { $ne: 'pending' } };
@@ -181,10 +183,12 @@ const addOrderItems = async (req, res) => {
     });
     const itemsPrice = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
     let voucher;
+    let voucherCustomer;
     if (req.body.voucherCode) {
       if (typeof req.body.voucherCode !== 'string') throw orderError(400, 'Mã voucher không hợp lệ');
       voucher = await Voucher.findOne({ code: req.body.voucherCode.trim().toUpperCase() });
       validateVoucherEligibility(voucher, itemsPrice, now);
+      voucherCustomer = await checkVoucherCustomer(voucher, req.user._id, itemsPrice, now);
     }
     const pricing = calculateOrderPricing(itemsPrice, voucher);
     if (paymentMethod === 'VNPAY' && (pricing.totalPrice < 5000 || pricing.totalPrice > 9999999999)) {
@@ -201,8 +205,10 @@ const addOrderItems = async (req, res) => {
       user: req.user._id, orderItems,
       shippingAddress: normalizeShippingAddress(req.body.shippingAddress, customer),
       paymentMethod,
+      ...(paymentMethod === 'VNPAY' ? { paymentDeadline: new Date(now.getTime() + 30 * 60000) } : {}),
       ...pricing,
-      ...(voucher ? { voucherCode: voucher.code, voucher: { _id: voucher._id, code: voucher.code, type: voucher.type, discount: voucher.discount } } : {}),
+      ...(voucher ? { voucherCode: voucher.code, voucher: { _id: voucher._id, code: voucher.code, type: voucher.type, discount: voucher.discount,
+        maxDiscount: voucher.maxDiscount, reservationToken: token, wallet: voucherCustomer.wallet?._id } } : {}),
       isPaid: false,
     });
     await order.validate();
@@ -223,11 +229,7 @@ const addOrderItems = async (req, res) => {
       reservedStock.push(item);
     }
     if (voucher) {
-      reservedVoucher = await Voucher.findOneAndUpdate({
-        _id: voucher._id, code: voucher.code, type: voucher.type, discount: voucher.discount,
-        isActive: true, startDate: { $lte: new Date() }, endDate: { $gte: new Date() },
-        minOrder: { $lte: itemsPrice }, $expr: { $lt: [{ $ifNull: ['$usedCount', 0] }, '$maxUses'] },
-      }, { $inc: { usedCount: 1, __v: 1 } }, { new: true });
+      reservedVoucher = await reserveVoucher({ voucher, user: req.user._id, order: order._id, token, itemsPrice, customer: voucherCustomer });
       if (!reservedVoucher) throw orderError(409, 'Voucher đã thay đổi hoặc hết lượt. Vui lòng áp dụng lại.');
     }
     const renewed = await Customer.updateOne({
@@ -254,7 +256,7 @@ const addOrderItems = async (req, res) => {
   } catch (error) {
     // Compensating writes also work with standalone MongoDB, without transactions.
     if (!committed) {
-      let canRelease = true;
+      let canRelease = !error.voucherReservationUncertain;
       if (order && saveAttempted) {
         try {
           const removed = await Order.deleteOne({
@@ -285,7 +287,7 @@ const addOrderItems = async (req, res) => {
       }
       if (canRelease) {
         const rollbacks = reservedStock.map((item) => changeInventory(item, item.quantity));
-        if (reservedVoucher) rollbacks.push(Voucher.updateOne({ _id: reservedVoucher._id, usedCount: { $gt: 0 } }, { $inc: { usedCount: -1, __v: 1 } }));
+        if (reservedVoucher) rollbacks.push(releaseVoucherUsage(order, `checkout:${token}`));
         const results = await Promise.allSettled(rollbacks);
         canRelease = results.every((result) => result.status === 'fulfilled' && result.value.matchedCount);
         if (!canRelease) console.error('Order rollback requires recovery:', order?._id?.toString());
@@ -318,52 +320,66 @@ const cancelOrderRecord = async (id, user) => {
   if (!user.isAdmin && !ownsOrder(existing, user)) throw orderError(403, 'Bạn không có quyền hủy đơn hàng này');
   requireCommittedOrder(existing);
   if (existing.deliveryReturn) throw orderError(400, 'Đơn đang hoặc đã xử lý hoàn hàng, không thể hủy theo luồng thông thường');
-  if (existing.cancellationLock) throw orderError(409, 'Đơn hàng đang được hủy. Vui lòng thử lại sau.');
-  if (existing.orderStatus === 'Đã hủy' && existing.stockRestored) return existing;
+  if (existing.orderStatus === 'Đã hủy' && existing.stockRestored) {
+    if (existing.cancellationReceipt) { try { await finishVoucherRelease(existing, existing.cancellationReceipt); } catch { /* Retry cleanup later. */ } }
+    return existing;
+  }
   const allowed = user.isAdmin ? ['Đang xử lý', 'Đã xác nhận'] : ['Đang xử lý'];
-  if (!allowed.includes(existing.orderStatus)) throw orderError(400, 'Không thể hủy đơn hàng ở trạng thái hiện tại');
-  const token = randomUUID();
-  const claimed = await Order.findOneAndUpdate({
+  if (existing.cancellationLock && existing.cancellationReceipt !== existing.cancellationLock) {
+    throw orderError(503, 'Đơn có khóa hủy từ phiên bản cũ, cần cửa hàng đối soát kho và lượt mã trước khi xử lý tiếp');
+  }
+  const resuming = existing.orderStatus === 'Đã hủy' && existing.cancellationLock;
+  if (!resuming && existing.cancellationLock) throw orderError(409, 'Đơn hàng đang được hủy. Vui lòng thử lại sau.');
+  if (!resuming && !allowed.includes(existing.orderStatus)) throw orderError(400, 'Không thể hủy đơn hàng ở trạng thái hiện tại');
+  const token = resuming ? existing.cancellationLock : randomUUID();
+  const claimed = resuming ? existing : await Order.findOneAndUpdate({
     // Refund eligibility must come from the same payment snapshot this claim protects.
     // A concurrent payment confirmation/reversal requires a fresh read before cancellation.
     ...COMMITTED_ORDERS, _id: id, orderStatus: existing.orderStatus, isPaid: existing.isPaid,
+    ...(user.paymentExpiryVersion !== undefined ? { __v: user.paymentExpiryVersion, paymentMethod: 'VNPAY', isPaid: false, paymentDeadline: { $lte: new Date() } } : {}),
     cancellationLock: null, stockRestored: { $ne: true }, 'deliveryReturn.state': { $exists: false },
-  }, { $set: { orderStatus: 'Đã hủy', cancellationLock: token, refundStatus: existing.isPaid ? 'pending' : 'not_required' }, $inc: { __v: 1 } }, { new: true });
+  }, { $set: { orderStatus: 'Đã hủy', cancellationLock: token, refundStatus: existing.isPaid ? 'pending' : 'not_required',
+    cancellationReceipt: token,
+    ...(user.paymentExpiryVersion !== undefined ? { autoCancelledAt: new Date(), paymentExpiryReviewRequired: false } : {}),
+  }, $inc: { __v: 1 } }, { new: true });
   if (!claimed) throw orderError(409, 'Trạng thái đơn hàng đã thay đổi. Vui lòng tải lại.');
-  const restored = [];
-  let voucherReleased = false;
   try {
     for (const item of aggregateStock(claimed.orderItems)) {
-      const result = await changeInventory(item, item.quantity);
-      // A deleted product has no inventory to restore, but does not block cancellation.
-      if (result.matchedCount) restored.push(item);
-      else if (await Product.exists({ _id: item.product })) {
-        throw orderError(409, 'Tồn kho theo màu và size đã thay đổi. Vui lòng liên hệ cửa hàng để đối soát đơn hàng');
+      const receipt = `${token}:${JSON.stringify([String(item.product), item.inventoryVariant ? variantKey(item.color, item.size) : null])}`;
+      const { filter, update } = inventoryChange(item, item.quantity);
+      let restored = false;
+      try {
+        const result = await Product.updateOne({ ...filter, cancellationReceipts: { $ne: receipt } }, {
+          ...update, $addToSet: { cancellationReceipts: receipt },
+        });
+        restored = result.matchedCount === 1;
+      } catch { /* The receipt proves a write that lost its acknowledgement. */ }
+      if (!restored) {
+        const persisted = await Product.findById(item.product);
+        if (persisted && !persisted.cancellationReceipts?.includes(receipt)) {
+          throw orderError(503, 'Chưa hoàn được đúng màu/size. Đơn giữ trạng thái hủy để tiếp tục đối soát');
+        }
       }
     }
-    if (claimed.voucher?._id && !claimed.voucherReleased) {
-      const result = await Voucher.updateOne({ _id: claimed.voucher._id, usedCount: { $gt: 0 } }, { $inc: { usedCount: -1, __v: 1 } });
-      voucherReleased = Boolean(result.matchedCount);
-    }
+    await releaseVoucherUsage(claimed, token, { hold: true });
     const completed = await Order.findOneAndUpdate({ ...COMMITTED_ORDERS, _id: id, cancellationLock: token }, {
-      $set: { stockRestored: true, voucherReleased: true, cancellationLock: null }, $inc: { __v: 1 },
+      $set: { stockRestored: true, voucherReleased: true, cancellationLock: null, cancellationRecoveryRequired: false }, $inc: { __v: 1 },
     }, { new: true });
-    if (!completed) throw orderError(409, 'Không thể hoàn tất hủy đơn hàng');
+    if (!completed) {
+      const persisted = await Order.findById(id);
+      if (persisted?.orderStatus === 'Đã hủy' && persisted.stockRestored && persisted.voucherReleased) return persisted;
+      throw orderError(503, 'Chưa chốt được hủy đơn. Vui lòng thử lại để tiếp tục');
+    }
+    try { await finishVoucherRelease(completed, token); } catch { /* A leftover hold only prevents deletion. */ }
     return completed;
   } catch (error) {
-    const rollbacks = restored.map((item) => changeInventory(item, -item.quantity));
-    if (voucherReleased) rollbacks.push(Voucher.updateOne({ _id: claimed.voucher._id }, { $inc: { usedCount: 1, __v: 1 } }));
-    const results = await Promise.allSettled(rollbacks);
-    if (results.every((result) => result.status === 'fulfilled' && result.value.matchedCount)) {
-      await Order.updateOne({ ...COMMITTED_ORDERS, _id: id, cancellationLock: token }, {
-        $set: { orderStatus: existing.orderStatus, cancellationLock: null, stockRestored: false, voucherReleased: existing.voucherReleased || false, refundStatus: existing.refundStatus || 'not_required' },
-        $inc: { __v: 1 },
-      });
-    } else {
-      // Keep the claim when compensation failed; retrying must not duplicate stock.
-      console.error('Cancellation rollback requires recovery:', id);
-    }
-    throw error;
+    // Never reopen cancellation or reclaim a use released to another checkout.
+    try {
+      const persisted = await Order.findById(id);
+      if (persisted?.stockRestored && persisted.orderStatus === 'Đã hủy' && persisted.voucherReleased) return persisted;
+      await Order.updateOne({ _id: id, cancellationLock: token }, { $set: { cancellationRecoveryRequired: true }, $inc: { __v: 1 } });
+    } catch { /* Retain the cancellation claim if the database is unavailable. */ }
+    throw orderError(503, 'Đơn đang hoàn tất hủy; các phần đã xử lý được giữ nguyên. Vui lòng thử lại để tiếp tục');
   }
 };
 
@@ -398,6 +414,10 @@ const updateOrderStatus = async (req, res) => {
       ...(delivered ? { deliveredAt: new Date(), isPaid: true, paidAt: order.paidAt || new Date() } : {}),
     }, $inc: { __v: 1 } }, { new: true, runValidators: true });
     if (!updated) throw orderError(409, 'Trạng thái đơn hàng đã thay đổi. Vui lòng tải lại.');
+    if (delivered && mongoose.connection.readyState === 1) {
+      try { await grantCustomerVouchers(updated.user?._id || updated.user); }
+      catch { console.error('Chưa cấp được quà sau mua; khách có thể nhận lại tại Mã của tôi'); }
+    }
     return res.json(publicOrder(updated));
   } catch (error) { return fail(res, error); }
 };
@@ -570,6 +590,7 @@ const getOrdersOverview = async (req, res) => {
 };
 
 export {
+  cancelOrderRecord,
   addOrderItems, getMyOrders, getOrders, updateOrderStatus, updateOrderToDelivered,
   getOrderById, deleteOrder, getRevenueStats, getTopCustomers, getOrdersOverview,
   updatePaymentStatus, cancelOrder, confirmOrderRefund,

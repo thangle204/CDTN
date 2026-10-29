@@ -167,6 +167,18 @@ test('VNPAY creation fails closed when merchant configuration is unavailable', a
   assert.equal(state.current().isPaid, false);
 });
 
+test('expired order payment deadlines prevent opening or renewing VNPAY links', async t => {
+  const state = setup(t, { paymentDeadline: new Date(Date.now() - 1000) });
+  const result = await state.create();assert.equal(result.statusCode, 409);
+  assert.equal(state.writes.length, 0);assert.equal(state.current().vnpayPayments, undefined);
+});
+
+test('a new VNPAY link cannot outlive the order remaining thirty-minute payment window', async t => {
+  const deadline = new Date(Date.now() + 120000), state = setup(t, { paymentDeadline: deadline });
+  const result = await state.create();assert.equal(result.statusCode, 200);
+  assert.equal(new Date(state.current().vnpayPayments[0].expiresAt).toISOString(), deadline.toISOString());
+});
+
 test('disabled VNPAY checkout fails before claiming the customer cart or touching inventory', async t => {
   const state = setup(t);
   process.env.VNPAY_ENABLED = 'false';

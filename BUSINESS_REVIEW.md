@@ -2,30 +2,34 @@
 
 Ngày rà soát: 14/10/2026. Cập nhật sửa ba lỗi P1 và bổ sung giao thất bại/kiểm hàng quay về: 15/10/2026. Cập nhật chẩn đoán kết nối: 22/10/2026. Tích hợp VNPAY Sandbox: 23/10/2026.
 
+Bổ sung rà soát ngày **28/10/2026**, hoàn thiện sửa ngày **29/10/2026**: [Mã giảm giá — chức năng và kết quả kiểm tra](VOUCHER_REVIEW.md). Đã sửa lỗi 14–16, bổ sung **kho ưu đãi công khai + mã riêng theo điều kiện**, giới hạn mỗi khách, mức trần và tự đối soát đơn VNPAY sau 30 phút theo lựa chọn người dùng. Không tự tạo chương trình giảm giá hoặc thay mức giảm trong dữ liệu cửa hàng.
+
+Đợt này đạt **381 backend, 201 frontend**, build thành công; **7 ca HTTP/MongoDB thật** trong database thử nghiệm riêng đạt (Node tính 8 mục gồm nhóm cha), đã dọn đúng database có dấu sở hữu. **13 trường hợp Chrome** với API giả lập ở 1440/390/320px đạt. Phản hồi QueryDR cho worker được giả lập; chưa tạo giao dịch VNPAY Sandbox thật mới trong đợt này.
+
 Phạm vi: sản phẩm/ảnh/biến thể, tồn kho, giỏ, checkout, thanh toán, hủy/hoàn tiền, voucher, tài khoản, nhân viên và báo cáo quản trị. Sau đợt rà soát, đã sửa ba lỗi P1 số 11–13 và bổ sung hồi quy. Không sửa hoặc in giá trị bí mật trong `.env`; lịch sử/kết quả kiểm tra MongoDB được ghi riêng.
 
 P1: ưu tiên sửa trước khi bán thật vì có thể sai đơn, sai hoàn tiền, mất khả năng hoàn kho hoặc mất quyền quản trị. P2: gây tắc hoặc sai luồng trong điều kiện nêu rõ. P3: sai khác giao diện có ảnh hưởng thấp hơn.
 
 ## Trạng thái sau khi sửa lỗi
 
-**Đã xử lý các trường hợp của lỗi 1–4, 6–8, 10–13 và 19.** Đã bổ sung luồng giao thất bại/từ chối COD, kiểm tra hàng quay về và xử lý kho/voucher/hoàn tiền theo chính sách người dùng chốt. Ngày 23/10/2026 sau tích hợp VNPAY Sandbox, cổng nhận IPN/trang chờ xác nhận và đối chiếu QueryDR thủ công: **310/310 backend đạt; 165 kiểm tra frontend đạt (20 luồng và 145 ca Node); build thành công**. Các kết quả này dùng model/API/phản hồi truy vấn giả lập và HTTP cục bộ, chưa xác nhận giao dịch đầu cuối qua IPN hoặc QueryDR thật của VNPAY. Các mục còn mở bên dưới chưa được sửa trong đợt này.
+**Đã xử lý các trường hợp của lỗi 1–4, 6–8, 10–16 và 19.** Đã bổ sung luồng giao thất bại/từ chối COD, kiểm tra hàng quay về và xử lý kho/voucher/hoàn tiền theo chính sách người dùng chốt. Lịch sử ngày 23/10/2026 sau tích hợp VNPAY Sandbox, cổng nhận IPN/trang chờ xác nhận và đối chiếu QueryDR thủ công: **310/310 backend đạt; 165 kiểm tra frontend đạt (20 luồng và 145 ca Node); build thành công**. Kết quả sửa voucher mới nhất ghi ở đầu tài liệu.
 
-Các mục đang mở: **5, 9, 14–18 và 20**. Ba lỗi P1 số 11–13 và lỗi phản hồi danh sách cũ số 19 đã được chuyển thành kiểm tra hồi quy yêu cầu hành vi đúng. Bản này vẫn cần đối soát thủ công khi không xác định được kết quả ghi database; không cung cấp phục hồi tự động sau mọi sự cố.
+Các mục đang mở: **5, 9, 17, 18 và 20**. Ba lỗi P1 số 11–13, các lỗi voucher 14–16 và phản hồi danh sách cũ số 19 đã được chuyển thành kiểm tra hồi quy yêu cầu hành vi đúng. Bản này vẫn cần đối soát thủ công khi không xác định được kết quả ghi database; không cung cấp phục hồi tự động sau mọi sự cố.
 
 ## Kết quả rà soát bổ sung — các vấn đề đang mở
 
 | Mục | Ưu tiên | Vấn đề và kết quả kiểm chứng |
 | --- | --- | --- |
-| 14 | P2 | Hủy A trả lượt voucher, B dùng lượt đó, hoàn tất hủy A lỗi rồi bù: `usedCount=2` trong khi `maxUses=1`, hai đơn còn hoạt động. |
-| 15 | P2 | Chỉ sửa mô tả voucher làm thay giờ hiệu lực: voucher hết hạn lúc 10:00 được đổi thành hết hạn 23:59:59 cùng ngày. |
-| 16 | P2 | Form voucher cũ ghi đè mức giảm mới; mức 20.000đ bị đổi lại 10.000đ dù chỉ định sửa mô tả. |
+| 14 | Đã sửa | Hủy dùng receipt cho kho/lượt; không mở lại đơn hoặc cộng bù lượt đã trả khi chốt hủy lỗi. |
+| 15 | Đã sửa | Sửa mô tả giữ nguyên thời điểm ISO; form lịch theo giờ Việt Nam UTC+7. |
+| 16 | Đã sửa | Chỉ gửi trường thay đổi và kiểm phiên bản, form cũ nhận 409. |
 | 17 | P2 | API chỉnh kho cũ bỏ qua phiên bản gửi lên; kho đã giảm còn 9 vẫn bị yêu cầu cũ đổi lại thành 10. Giao diện hiện không có nút gọi endpoint này. |
 | 18 | P2 | Callback thêm giỏ cũ tải lại giày A sau khi đã chuyển route B: màn hình hiển thị A nhưng lần thêm tiếp gửi ID B. |
 | 5 | P2 | Dòng sản phẩm đã mất bị giấu khỏi GET giỏ. Hiện checkout trả 409 do giỏ xác nhận khác giỏ gốc, tải lại vẫn thiếu dòng để khách xóa. |
 | 9 | P2 | Sau reverse proxy, 21 địa chỉ forwarded khác nhau vẫn dùng chung hạn mức; request thứ 21 nhận 429. |
 | 20 | P3 | Nhãn Top khách hàng nói “Theo số đơn”, nhưng API sắp xếp theo tổng chi tiêu trước. |
 
-Các mục 11–19 và hai lỗi cũ 5/9 đã được kiểm chứng ngoại tuyến bằng controller/component thật ở đợt rà soát. Các mục 11–13 và 19 hiện đã sửa. Mục 14 vẫn cần một lỗi ghi tạm thời để kích hoạt tình huống đã mô tả; không giả định tiến trình chết. Bằng chứng rà soát ban đầu dùng hooks/API giả lập; kết quả Chrome cho chức năng giao thất bại bổ sung được ghi riêng bên dưới.
+Các mục 11–19 và hai lỗi cũ 5/9 đã được kiểm chứng ngoại tuyến bằng controller/component thật ở đợt rà soát. Các mục 11–16 và 19 hiện đã sửa. Bằng chứng trước sửa của mục 14 dùng một lỗi ghi tạm thời, không giả định tiến trình chết. Lịch sử tái hiện bên dưới được giữ để đối chiếu; bộ hồi quy mới yêu cầu hành vi đúng.
 
 ## Lịch sử xác minh MongoDB thật — đợt tích hợp trước, ngày 14/10/2026
 
@@ -43,7 +47,7 @@ Các mục 11–19 và hai lỗi cũ 5/9 đã được kiểm chứng ngoại tu
 | 3. Mất mọi admin | Khóa chung trong database, kiểm tra lại quyền và phiên sau khi giữ khóa, đếm admin Customer + Staff, chỉ chủ sở hữu được mở khóa. | `backend/tests/adminConcurrency.test.js` |
 | 4. Xóa SKU giữa checkout | DELETE lưu trữ nguyên tử, giữ SKU/biến thể; chặn bán/sửa/bật lại. Hủy hoặc bù checkout vẫn hoàn đúng kho. | `backend/tests/productArchive.test.js`, `backend/tests/catalogApi.test.js` |
 
-Lỗi **5, 9, 14–18 và 20** cùng các khoảng trống nghiệp vụ bên dưới vẫn cần xử lý. Lưu trữ SKU ngăn phát sinh mới dòng mất sản phẩm do DELETE, nhưng chưa sửa cách trả các dòng giỏ đã mất sản phẩm từ trước. Các bản sửa mới 11/12 bổ sung bảo vệ pending/commit và token giữ kho ngoài những trường hợp đã sửa ở mục 2/4. Quy trình hoàn hàng giao thất bại dùng dấu ghi nhận riêng, không sửa nhánh bù voucher của hủy thông thường ở lỗi 14.
+Lỗi **5, 9, 17, 18 và 20** cùng các khoảng trống nghiệp vụ bên dưới vẫn cần xử lý. Lưu trữ SKU ngăn phát sinh mới dòng mất sản phẩm do DELETE, nhưng chưa sửa cách trả các dòng giỏ đã mất sản phẩm từ trước. Các bản sửa 11/12 bổ sung bảo vệ pending/commit và token giữ kho. Bản voucher mới thay nhánh bù của hủy thông thường bằng receipt bền vững; luồng giao thất bại giữ receipt riêng và trả đúng reservation của mã.
 
 ## 1. P1 — Đã sửa: đơn khác màu/size khách đã xác nhận dù tổng tiền đúng
 
@@ -200,6 +204,8 @@ Hồi quy **12 ca Profile/AuthProvider thật** tại `frontend/tests/profile-se
 
 ### 14. P2 — Hủy lỗi rồi bù có thể vượt giới hạn lượt voucher
 
+**Đã sửa, hoàn thiện 29/10/2026.** Hủy không mở lại đơn khi lỗi; kho và lượt ghi receipt nguyên tử, thử lại tiếp tục phần thiếu. Hồi quy tại `backend/tests/vouchers.test.js`, `orderLogic.test.js`; kiểm tra MongoDB tại `backend/integration/vouchers.integration.test.js`. Mô tả sau đây là bằng chứng trước sửa.
+
 Nguồn: `backend/controllers/orderController.js:209`, `:286`, `:289`, `:296`, `:299`.
 
 Voucher chỉ có 1 lượt, đã thuộc đơn A. Hủy A giảm lượt từ 1 xuống 0 trước khi ghi hoàn tất. Checkout B dùng lượt vừa giải phóng và tạo đơn thành công. Bước hoàn tất hủy A gặp một lỗi ghi; thao tác bù cộng lại lượt không kiểm giới hạn rồi đưa A về Đang xử lý.
@@ -210,6 +216,8 @@ Script: `.tmp/business-review/order-interleavings.test.mjs`. Hướng sửa: gi�
 
 ### 15. P2 — Sửa mô tả voucher làm thay lịch hiệu lực
 
+**Đã sửa, hoàn thiện 29/10/2026.** Form chỉ gửi trường đổi, giữ nguyên ISO nếu lịch không đổi và nhập giờ UTC+7. Hồi quy tại `frontend/tests/vouchers.test.cjs`. Mô tả sau đây là bằng chứng trước sửa.
+
 Nguồn: `frontend/src/components/AdminVouchers.jsx:21`, `:83`, `:85`, `:102`, `:132`.
 
 Form bỏ giờ gốc khi mở sửa, rồi luôn gửi lại thời điểm đầu ngày/cuối ngày. Đã gọi handleEdit → đổi mô tả → handleSubmit thật với giờ Việt Nam: lúc **17:00 ngày 14/10/2026**, voucher hết hạn **10:00** được gửi thành hết hạn **23:59:59.999**, dù quản trị không sửa lịch. Ngày bắt đầu cũng bị lùi về 00:00. Voucher đang hết hạn có thể được kích hoạt lại ngoài ý muốn sau khi lưu.
@@ -217,6 +225,8 @@ Form bỏ giờ gốc khi mở sửa, rồi luôn gửi lại thời điểm đ�
 Script: `.tmp/business-review/voucher-date-roundtrip.cjs`. Hướng sửa: giữ nguyên ISO/thời điểm gốc khi lịch chưa thay đổi; chỉ gửi trường lịch được sửa và thể hiện rõ giờ/múi giờ áp dụng nếu hỗ trợ lịch theo giờ.
 
 ### 16. P2 — Form voucher cũ ghi đè khuyến mãi mới
+
+**Đã sửa, hoàn thiện 29/10/2026.** Chỉnh sửa/kích hoạt mã yêu cầu phiên bản; form cũ nhận 409. Quyền lợi đã phát hành được giữ ổn định, tạo chương trình mới để đổi điều kiện. Hồi quy tại `backend/tests/vouchers.test.js` và `frontend/tests/vouchers.test.cjs`. Mô tả sau đây là bằng chứng trước sửa.
 
 Nguồn: `frontend/src/components/AdminVouchers.jsx:102`, `:106`; `backend/controllers/voucherController.js:72`, `:77`.
 
@@ -313,7 +323,7 @@ Các mục này cần chốt quy tắc trước khi bổ sung chức năng; khô
 - **Lịch sử thao tác và chứng từ:** chưa có lịch sử người xác nhận thu/hoàn tiền, sửa giá/tồn/quyền cùng giá trị trước/sau. API vẫn cho xóa vật lý đơn đã hủy và hoàn tiền; cần chốt lưu trữ lịch sử/nhật ký riêng trước khi xóa để còn đối soát.
 - **Định nghĩa báo cáo:** cần thống nhất đơn trả tiền trước nhưng chưa giao, tiền hàng/ship/voucher, đơn đã hủy đang chờ hoàn tiền và chi tiêu khách hàng. Chưa có báo cáo riêng tiền đã thu/đã hoàn/đang chờ hoàn hoặc giá vốn/lợi nhuận. Sai nhãn xếp hạng đã tách thành lỗi 20.
 - **Vận chuyển:** phí hiện cố định 30.000đ, địa chỉ nhập tự do, chưa có mã vận đơn/theo dõi vận chuyển. Đã có ghi nhận giao thất bại thủ công; cần quyết định vùng phục vụ, phí theo khu vực, tích hợp hãng vận chuyển và giao lại.
-- **Chính sách voucher nâng cao:** hiện hạn mức dùng chung toàn mã. Nếu cần mỗi khách chỉ dùng một số lần, mã cho khách mới/sản phẩm/danh mục cụ thể hoặc chống giữ lượt bằng đơn chưa thanh toán, phải định nghĩa thêm; chưa có quy tắc này trong schema/controller hiện tại.
+- **Voucher nâng cao:** đã có hạn mức mỗi khách, mã riêng theo điều kiện, mức trần và đối soát VNPAY sau 30 phút. Phạm vi hiện là toàn đơn, một mã mỗi đơn; điều kiện riêng cho sản phẩm/danh mục và cộng nhiều mã chưa được bổ sung. Kết quả VNPAY chưa rõ vẫn giữ đơn để đối soát, không tự trả lượt.
 
 ## Các quy tắc đã được kiểm tra trong phạm vi rà soát
 
@@ -328,7 +338,7 @@ Các mục này cần chốt quy tắc trước khi bổ sung chức năng; khô
 ## Kiểm tra tiếp theo
 
 1. Chạy lại các ca tích hợp mới cho **11–13** khi kết nối MongoDB hoạt động và kiểm tra phiên/route trên trình duyệt thật; bản sửa và hồi quy ngoại tuyến đã đạt.
-2. Tiếp tục **14–18**, đồng thời xử lý **5 và 9**: reservation voucher, giữ giờ/phiên bản khi sửa voucher, phiên bản API kho cũ, route chi tiết, giỏ mất dòng và limiter theo topology proxy thực tế.
+2. Tiếp tục **17–18**, đồng thời xử lý **5 và 9**: phiên bản API kho cũ, route chi tiết, giỏ mất dòng và limiter theo topology proxy thực tế. Giữ các bộ hồi quy voucher 14–16 đã bổ sung.
 3. Xử lý **20**: nhãn báo cáo. Mục 19 đã được sửa cùng luồng giao thất bại/hoàn hàng.
 4. Chốt đổi/trả sau giao, giao lại, hạn BANK, vai trò nhân viên, lịch sử tồn/tiền và công cụ đối soát. Giao thất bại/kiểm hàng quay về đã triển khai theo chính sách ở trên.
 

@@ -23,6 +23,7 @@ const canUpdatePayment = (order, isPaid) => Boolean(order)
 const reconciliationAttempts = order => (order?.vnpayPayments || []).filter(payment => payment.state !== 'succeeded' && typeof payment.txnRef === 'string' && payment.txnRef);
 
 const canReconcileVnpay = order => order?.paymentMethod === 'VNPAY' && !order.isPaid
+  && !order.cancellationPending
   && order.checkoutFinalized !== false && !order.cancellationLock && order.deliveryReturn?.state !== 'processing'
   && reconciliationAttempts(order).length > 0;
 
@@ -89,6 +90,12 @@ const AdminOrders = () => {
     return true;
   };
   const endAction = () => { actionRef.current = null; if (mounted.current) setActionId(null); };
+  const resumeCancellation = async orderId => {
+    if (!beginAction(orderId)) return;
+    try { await ordersAPI.cancelOrder(orderId);await fetchOrders(); }
+    catch (failure) { if (mounted.current) setError(failure.response?.data?.message || 'Chưa hoàn tất hủy đơn. Vui lòng thử lại'); }
+    finally { endAction(); }
+  };
 
   const handleUpdateStatus = async (orderId, status) => {
     const order = ordersRef.current.find(item => item._id === orderId);
@@ -482,6 +489,8 @@ const AdminOrders = () => {
                   </div>
                 )}
               </div>
+              {order.cancellationPending && <div className="mt-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-900"><p>Đơn đang hoàn tất hủy. Những phần kho và lượt mã đã xử lý được giữ nguyên.</p><button disabled={actionId !== null} onClick={() => resumeCancellation(order._id)} className="mt-3 rounded-lg border border-amber-300 px-4 py-2 font-semibold">Tiếp tục hoàn tất hủy đơn</button></div>}
+              {order.paymentExpiryReviewRequired && !order.isPaid && order.orderStatus !== 'Đã hủy' && <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Đơn đã hết hạn chờ thanh toán; VNPAY chưa cung cấp kết quả cuối cùng. Đơn được giữ để đối soát, chưa tự trả lượt ưu đãi.</p>}
               <DeliveryReturnActions order={order} busy={actionId !== null}
                 onMarkFailed={(id, data) => handleDeliveryAction(id, data, 'failure')}
                 onSettleReturn={(id, data) => handleDeliveryAction(id, data, 'return')} />

@@ -88,7 +88,7 @@ const setupOrder = (t, options = {}) => {
   t.mock.method(Product, 'exists', async () => true);
   const voucherUpdate = t.mock.method(Voucher, 'updateOne', async (filter, update) => {
     assert.equal(String(filter._id), String(voucherId));
-    voucher.usedCount += update.$inc.usedCount;
+    voucher.usedCount += update.$inc.usedCount || 0;
     return { matchedCount: 1 };
   });
   return {
@@ -134,7 +134,7 @@ test('Payment confirmed after cancellation snapshot: reject without stock/vouche
   assert.equal(repeated.statusCode, 200);
   assert.equal(repeated.body.order.refundStatus, 'pending');
   assert.equal(state.stockUpdate.mock.callCount(), 1);
-  assert.equal(state.voucherUpdate.mock.callCount(), 1);
+  assert.equal(state.voucherUpdate.mock.calls.filter(call => call.arguments[1].$inc?.usedCount).length, 1);
 });
 
 test('Payment reversed after cancellation snapshot: reject before restoration, retry needs no refund', async (t) => {
@@ -157,7 +157,7 @@ test('Payment reversed after cancellation snapshot: reject before restoration, r
   assert.equal(retry.body.order.isPaid, false);
   assert.equal(retry.body.order.refundStatus, 'not_required');
   assert.equal(state.stockUpdate.mock.callCount(), 1);
-  assert.equal(state.voucherUpdate.mock.callCount(), 1);
+  assert.equal(state.voucherUpdate.mock.calls.filter(call => call.arguments[1].$inc?.usedCount).length, 1);
 });
 
 test('Cancellation claims first: a stale payment confirmation cannot change the cancelled order', async (t) => {
@@ -192,5 +192,5 @@ test('Concurrent cancellations and retries restore a paid variant and voucher ex
   await cancelOrder(state.cancelRequest, retry);
   assert.equal(retry.statusCode, 200);
   assert.equal(state.stockUpdate.mock.callCount(), 1);
-  assert.equal(state.voucherUpdate.mock.callCount(), 1);
+  assert.equal(state.voucherUpdate.mock.calls.filter(call => call.arguments[1].$inc?.usedCount).length, 1);
 });

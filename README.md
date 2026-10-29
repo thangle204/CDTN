@@ -14,6 +14,10 @@ Trang chi tiết hiển thị bộ ảnh có ảnh nhỏ để chọn và cửa 
 
 ## Chạy dự án
 
+Chức năng ưu đãi mới: **Ưu đãi** (`/offers`) cho mã công khai; **Mã của tôi** (`/my-vouchers`) cho mã đã lưu và quà riêng đúng tài khoản. Quản trị tạo chương trình tại **Mã ưu đãi**, cấu hình lượt mỗi khách, mức giảm tối đa, kênh phát hành và điều kiện lần mua đầu/sau giao thành công. Lưu mã không giữ lượt. Xem [quy tắc và kiểm tra mã giảm giá](VOUCHER_REVIEW.md#chức-năng-đã-hoàn-thiện).
+
+Đơn VNPAY mới chờ tối đa 30 phút trước bước tự đối soát; chỉ tự hủy/trả kho và lượt khi xác minh chưa thu tiền. Kết quả chưa rõ được giữ để đối soát, không ép hủy theo đồng hồ. Đơn cũ không có hạn chờ không bị hủy hồi tố. Worker chạy cùng backend; cập nhật frontend/backend đồng thời, không cần seed lại.
+
 Yêu cầu Node.js >= 22.12 và MongoDB; khuyến nghị Node.js 24 LTS để dùng kho chứng chỉ hệ điều hành. Chạy các lệnh từ thư mục có package.json gốc:
 
     npm ci

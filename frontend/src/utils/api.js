@@ -109,12 +109,17 @@ export const cartAPI = {
 
 export const vouchersAPI = {
   getActiveVouchers: () => api.get('/vouchers', { params: { _t: Date.now() } }),
+  getAvailableVouchers: (orderTotal, { signal } = {}) => api.get('/vouchers/available', { signal, params: { orderTotal, _t: Date.now() } }),
+  getMyVouchers: ({ signal } = {}) => api.get('/vouchers/mine', { signal, params: { _t: Date.now() } }),
+  refreshMyVouchers: ({ signal } = {}) => api.post('/vouchers/mine/refresh', {}, { signal }),
+  saveVoucher: id => api.post(`/vouchers/${id}/save`),
+  unsaveVoucher: id => api.delete(`/vouchers/${id}/save`),
   applyVoucher: (code, orderTotal) => api.post('/vouchers/apply', { code, orderTotal }),
   getAllVouchersAdmin: () => api.get('/vouchers/admin/all', { params: { _t: Date.now() } }),
   createVoucher: (voucherData) => api.post('/vouchers/create', voucherData),
   updateVoucher: (id, voucherData) => api.put(`/vouchers/${id}`, voucherData),
   deleteVoucher: (id) => api.delete(`/vouchers/${id}`),
-  toggleVoucher: (id) => api.put(`/vouchers/${id}/toggle-visibility`)
+  toggleVoucher: (id, data) => api.put(`/vouchers/${id}/toggle-visibility`, data)
 };
 
 export const customersAPI = {

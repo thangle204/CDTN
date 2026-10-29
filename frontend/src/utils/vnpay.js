@@ -2,6 +2,7 @@ export const canPayWithVnpay = order => Boolean(order?._id
   && order.paymentMethod === 'VNPAY' && !order.isPaid
   && ['Đang xử lý', 'Đã xác nhận'].includes(order.orderStatus)
   && order.checkoutFinalized !== false && !order.cancellationLock
+  && (!order.paymentDeadline || new Date(order.paymentDeadline) > new Date())
   && order.deliveryReturn?.state !== 'processing');
 
 export const vnpaySandboxUrl = value => {

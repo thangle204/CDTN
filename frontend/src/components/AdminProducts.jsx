@@ -4,8 +4,9 @@ import { productImageUrl } from '../utils/productVariants';
 import { FaPlus, FaEdit, FaEye, FaEyeSlash, FaSearch, FaTrash } from 'react-icons/fa';
 import ProductPhotoPreview from './ProductPhotoPreview';
 import { productImages, productContentPayload, validateProductContentDraft, MAX_PRODUCT_IMAGES, MAX_PRODUCT_SECTIONS } from '../utils/productContent';
+import { productPricing, productSalePrice } from '../utils/productPricing';
 
-const emptyForm = () => ({ name: '', price: '', category: '', description: '', image: '', brand: '', material: '', origin: '', gender: '', style: '', modelCode: '', contentSections: [], variants: [{ color: '', size: '', quantity: '' }] });
+const emptyForm = () => ({ name: '', price: '', discountPercent: '0', category: '', description: '', image: '', brand: '', material: '', origin: '', gender: '', style: '', modelCode: '', contentSections: [], variants: [{ color: '', size: '', quantity: '' }] });
 const imageTypes = ['image/jpeg', 'image/png', 'image/webp'];
 
 const AdminProducts = () => {
@@ -105,6 +106,12 @@ const AdminProducts = () => {
     const quantity = Number(variant.quantity);
     return total + (Number.isSafeInteger(quantity) && quantity >= 0 ? quantity : 0);
   }, 0);
+  let pricePreview = null;
+  try {
+    if (String(formData.price).trim() && String(formData.discountPercent).trim()) {
+      pricePreview = productPricing({ price: Number(formData.price), discountPercent: Number(formData.discountPercent) });
+    }
+  } catch { /* Keep an invalid draft editable; submission explains the error. */ }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -121,6 +128,11 @@ const AdminProducts = () => {
     if (contentError) { setFormError(contentError); return; }
     if (formData.price === '' || !Number.isSafeInteger(price) || price < 0) {
       setFormError('Giá phải là số nguyên không âm.');
+      return;
+    }
+    const discountPercent = Number(formData.discountPercent);
+    if (!String(formData.discountPercent).trim() || !Number.isSafeInteger(discountPercent) || discountPercent < 0 || discountPercent > 100) {
+      setFormError('Giảm giá sản phẩm phải là số nguyên từ 0 đến 100%. Nhập 0 để bỏ giảm giá.');
       return;
     }
     const variants = [];
@@ -155,6 +167,7 @@ const AdminProducts = () => {
       image: placeholderCover,
       ...productContentPayload(formData, pendingExtras, placeholderCover, editingProduct),
       price,
+      discountPercent,
       ...(inventoryChanged ? { variants } : {}),
       ...(editingProduct ? { version: editingProduct.__v ?? 0 } : {}),
     };
@@ -210,6 +223,7 @@ const AdminProducts = () => {
     setFormData({
       name: product.name,
       price: product.price,
+      discountPercent: product.discountPercent ?? 0,
       category: product.category || '',
       description: product.description || '',
       image: product.image || '',
@@ -372,7 +386,8 @@ const AdminProducts = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-red-600 font-semibold">
-                    {product.price.toLocaleString('vi-VN')}₫
+                    <div>{productSalePrice(product).toLocaleString('vi-VN')}₫</div>
+                    {product.discountPercent > 0 && <div className="mt-1 flex items-center gap-2 text-xs"><del className="font-normal text-gray-500">{product.price.toLocaleString('vi-VN')}₫</del><span className="rounded bg-red-50 px-2 py-1">−{product.discountPercent}%</span></div>}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
@@ -460,14 +475,30 @@ const AdminProducts = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Giá (₫) *</label>
-                  <input type="number" name="price" value={formData.price} onChange={handleChange} required min="0" step="1" className="w-full border border-gray-300 rounded px-3 py-2" />
+                  <label htmlFor="product-original-price" className="block text-sm font-medium text-gray-700 mb-1">Giá gốc (₫) *</label>
+                  <input id="product-original-price" type="number" name="price" value={formData.price} onChange={handleChange} required min="0" step="1" className="w-full border border-gray-300 rounded px-3 py-2" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Thương hiệu *</label>
                   <input type="text" name="brand" value={formData.brand} onChange={handleChange} required maxLength="100" placeholder="Nike, Adidas, Puma..." className="w-full border border-gray-300 rounded px-3 py-2" />
                 </div>
               </div>
+
+              <section className="rounded-lg border border-red-100 bg-red-50 p-4" aria-label="Giảm giá sản phẩm">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="product-discount-percent" className="mb-1 block text-sm font-medium text-gray-700">Giảm giá sản phẩm (%)</label>
+                    <input id="product-discount-percent" name="discountPercent" type="number" min="0" max="100" step="1" required value={formData.discountPercent} onChange={handleChange} aria-describedby="product-discount-help" className="w-full rounded border border-gray-300 bg-white px-3 py-2" />
+                    <button type="button" disabled={Number(formData.discountPercent) === 0} onClick={() => setFormData(previous => ({ ...previous, discountPercent: '0' }))} className="mt-2 text-sm font-semibold text-red-700 underline disabled:opacity-40">Bỏ giảm giá</button>
+                  </div>
+                  <div aria-live="polite">
+                    <p className="text-sm text-gray-600">Giá bán sau giảm / đôi</p>
+                    <p className="mt-1 text-2xl font-bold text-red-700">{pricePreview ? `${pricePreview.salePrice.toLocaleString('vi-VN')}₫` : '—'}</p>
+                    {pricePreview?.discountAmount > 0 && <p className="mt-1 text-sm text-gray-600">Giảm {pricePreview.discountAmount.toLocaleString('vi-VN')}₫ / đôi</p>}
+                  </div>
+                </div>
+                <p id="product-discount-help" className="mt-3 text-sm text-gray-600">Nhập 0–100%, áp dụng cho tất cả màu và size. Nhập 0 để bán theo giá gốc. Voucher được tính trên tiền hàng sau giảm; đơn đã đặt giữ nguyên giá.</p>
+              </section>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả ngắn *</label>

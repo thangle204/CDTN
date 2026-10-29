@@ -40,6 +40,18 @@ const catalog = [
   },
 ];
 const ids = (filters, products = catalog) => filterCatalogProducts(products, filters).map(product => product._id);
+
+test('price ranges and sorting use the discounted price rather than the original ticket price', () => {
+  const products = [
+    { _id: 'sale', price: 1000000, discountPercent: 30 },
+    { _id: 'regular', price: 800000 },
+    { _id: 'free', price: 200000, discountPercent: 100 },
+  ];
+  assert.deepEqual(ids({ minPrice: '690000', maxPrice: '710000' }, products), ['sale']);
+  assert.deepEqual(ids({ sort: 'price_asc' }, products), ['free', 'sale', 'regular']);
+  assert.deepEqual(ids({ sort: 'price_desc' }, products), ['regular', 'sale', 'free']);
+  assert.deepEqual(ids({ maxPrice: '0' }, products), ['free']);
+});
 const optionCount = (facets, group, value) => facets[group].find(option => option.value === value)?.count;
 
 test('color and size must match one available variant, never separate rows or a sold-out pair', () => {

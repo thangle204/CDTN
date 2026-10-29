@@ -28,6 +28,11 @@ const assignProductFields = (product, body, creating = false) => {
     product.category = body.category;
   }
   if (creating || body.price !== undefined) product.price = nonNegativeInteger(body.price, 'Giá bán');
+  if (body.discountPercent !== undefined) {
+    const discountPercent = nonNegativeInteger(body.discountPercent, 'Giảm giá sản phẩm');
+    if (discountPercent > 100) throw httpError(400, 'Giảm giá sản phẩm phải từ 0 đến 100%');
+    product.discountPercent = discountPercent;
+  }
   if (creating || body.variants !== undefined) {
     const variants = parseProductVariants(body.variants);
     const existing = new Map((product.variants || []).map((variant) => [variantKey(variant.color, variant.size), variant]));

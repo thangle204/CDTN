@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { FaArrowRight, FaChevronLeft, FaChevronRight, FaSearch, FaSlidersH, FaStar, FaTimes, FaThLarge, FaShoePrints, FaCreditCard, FaBoxOpen } from 'react-icons/fa';
 import { productsAPI } from '../utils/api';
 import { productImageUrl } from '../utils/productVariants';
+import { productPricing, productSalePrice } from '../utils/productPricing';
 import { filterCatalogProducts, buildCatalogFacets, validateCatalogPriceRange, normalizeCatalogText } from '../utils/catalogFilters';
 import './shoe-catalog.css';
 
@@ -16,6 +17,7 @@ const onImageError = event => {
 };
 
 function ProductCard({ product }) {
+  const pricing = productPricing(product);
   const available = Number(product.countInStock) > 0;
   const sizes = [...new Set(product.variants?.length
     ? product.variants.filter(variant => variant.quantity > 0).map(variant => variant.size)
@@ -27,6 +29,7 @@ function ProductCard({ product }) {
       <Link to={`/products/${product._id}`} className="catalog-card-image" aria-label={`Xem ${product.name}`}>
         <img src={productImageUrl(product.image)} alt={product.name} loading="lazy" decoding="async" onError={onImageError} />
         {!available && <span className="catalog-stock-badge">Hết hàng</span>}
+        {pricing.discountAmount > 0 && <span className="catalog-discount-badge">−{pricing.discountPercent}%</span>}
       </Link>
       <div className="catalog-card-info">
         <p className="catalog-card-brand">{product.brand}</p>
@@ -39,7 +42,7 @@ function ProductCard({ product }) {
             </span><span>({reviews.toLocaleString('vi-VN')})</span>
           </> : <span className="catalog-no-reviews">Chưa có đánh giá</span>}
         </div>
-        <p className="catalog-card-price">{money(product.price)}</p>
+        <div className="catalog-card-prices"><p className="catalog-card-price">{money(pricing.salePrice)}</p>{pricing.discountAmount > 0 && <del className="catalog-card-original-price" aria-label="Giá gốc">{money(pricing.originalPrice)}</del>}</div>
         <div className="catalog-card-bottom">
           <span className={available ? 'catalog-size-note' : 'catalog-size-note is-sold-out'}>
             {!available ? 'Tạm hết hàng' : sizes.length ? `Size ${sizes.slice(0, 3).join(' · ')}${sizes.length > 3 ? '…' : ''}` : 'Còn hàng'}
@@ -219,7 +222,7 @@ export default function ShoeCatalog({ showIntro = false } = {}) {
           {featuredProduct ? <Link to={`/products/${featuredProduct._id}`} className="catalog-feature" aria-label={`Khám phá ${featuredProduct.name}`}>
             <span className="catalog-feature__tag">KHÁM PHÁ PHONG CÁCH MỖI NGÀY</span>
             <img src={productImageUrl(featuredProduct.image)} alt={featuredProduct.name} decoding="async" onError={onImageError} />
-            <span className="catalog-feature__caption"><span><small>{featuredProduct.brand}</small><strong>{featuredProduct.name}</strong></span><span className="catalog-feature__price">{money(featuredProduct.price)}</span></span>
+            <span className="catalog-feature__caption"><span><small>{featuredProduct.brand}</small><strong>{featuredProduct.name}</strong></span><span className="catalog-feature__price">{money(productSalePrice(featuredProduct))}</span></span>
             <span className="catalog-feature__arrow" aria-hidden="true"><FaArrowRight /></span>
           </Link> : <div className="catalog-intro__detail" aria-hidden="true"><FaShoePrints /><span>MỘT ĐÔI GIÀY.<br /><strong>NHIỀU CHẤT RIÊNG.</strong></span></div>}
         </section>}

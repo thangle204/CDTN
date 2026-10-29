@@ -11,6 +11,7 @@ import { assertCartStock, assertCartUnlocked, findCartItem, productIdOf } from '
 import { getProductVariant, variantKey } from '../utils/productVariants.js';
 import { withAdminRoleGuard } from '../utils/adminGuard.js';
 import { NON_SALES_STATUSES } from '../utils/orderPricing.js';
+import { productSalePrice } from '../../shared/productPricing.js';
 
 const profileOf = (customer) => ({
   _id: customer._id,
@@ -25,7 +26,7 @@ const cartResponse = (customer) => customer.cart.filter((item) => item.product).
   ...item.toObject(),
   name: item.product.name,
   image: item.product.image,
-  price: item.product.price,
+  price: productSalePrice(item.product),
 }));
 const saveCart = async (customer, res, status = 200) => {
   await customer.save();
@@ -100,11 +101,11 @@ export const addItemToCart = async (req, res) => {
   assertCartStock(customer.cart, product, newQuantity, existing?._id, { size, color });
   if (existing) {
     existing.quantity = newQuantity;
-    existing.price = product.price;
+    existing.price = productSalePrice(product);
     existing.name = product.name;
     existing.image = product.image;
   } else {
-    customer.cart.push({ product: product._id, name: product.name, image: product.image, price: product.price, quantity, size, color });
+    customer.cart.push({ product: product._id, name: product.name, image: product.image, price: productSalePrice(product), quantity, size, color });
   }
   await saveCart(customer, res, 201);
 };
@@ -126,7 +127,7 @@ export const updateCartItemQuantity = async (req, res) => {
     assertCartStock(customer.cart, product, quantity, item._id, item);
   }
   item.quantity = quantity;
-  item.price = product.price;
+  item.price = productSalePrice(product);
   item.name = product.name;
   item.image = product.image;
   await saveCart(customer, res);

@@ -12,6 +12,16 @@ Phần **Bài giới thiệu chi tiết → + Thêm mục giới thiệu** cho p
 
 Trang chi tiết hiển thị bộ ảnh có ảnh nhỏ để chọn và cửa sổ phóng to; bên dưới là bài giới thiệu, thông số và đánh giá của khách. Sản phẩm cũ có một ảnh vẫn hiển thị bình thường. Sửa ảnh/nội dung giữ nguyên kho khi không thay đổi các dòng màu/size. Cập nhật đồng thời frontend và backend; không cần seed hoặc chuyển đổi dữ liệu cũ.
 
+## Giảm giá sản phẩm theo phần trăm
+
+Vào **Quản trị → Sản phẩm → Thêm sản phẩm / Chỉnh sửa**, nhập **Giá gốc (₫)** và **Giảm giá sản phẩm (%)** rồi lưu. Mức giảm là số nguyên **0–100%**, áp dụng cho tất cả màu và size của sản phẩm; giá sau giảm được xem trước ngay trong form. Chọn **Bỏ giảm giá** hoặc nhập `0` để bán theo giá gốc. Ví dụ: giá gốc 1.000.000₫, giảm 20% → giá bán 800.000₫/đôi.
+
+Danh sách giày và trang chi tiết hiển thị giá sau giảm, giá gốc gạch ngang và nhãn phần trăm; bộ lọc/sắp xếp giá, giỏ hàng và checkout đều dùng giá sau giảm. Backend tính lại giá từ sản phẩm, làm tròn tiền giảm đến đồng trên từng đôi rồi nhân số lượng. Voucher được xét mức đơn tối thiểu và tính giảm thêm trên tiền hàng sau giảm. Đơn đã tạo lưu giá mua và mức giảm tại thời điểm đặt; thay đổi giảm giá về sau không làm đổi tiền đơn cũ, thanh toán hay hoàn tiền của đơn đó.
+
+Sản phẩm cũ chưa có `discountPercent` được hiểu là giảm 0%; sửa giảm giá không chuyển đổi kho, không cần seed hoặc cập nhật dữ liệu hàng loạt. Khi giá/ưu đãi đổi trong lúc khách xác nhận, checkout kiểm tra lại và trả 409 để khách xác nhận tổng mới. Cập nhật cả backend, frontend và thư mục `shared` chứa công thức giá dùng chung.
+
+Kiểm tra ngày **29/10/2026**: **388 backend**, **207 frontend** (186 ca Node và 21 luồng), build thành công; **5 tình huống HTTP/MongoDB thật** đạt trên cơ sở dữ liệu thử có kiểm tra quyền sở hữu và đã dọn. **15 kiểm tra Chrome** đạt ở 1440px, 390px và 320px bằng dữ liệu/API giả lập, gồm nhập/lưu mức giảm và giá tại catalog, chi tiết, giỏ hàng, checkout. Không chỉnh giá, kho hay chương trình ưu đãi của dữ liệu cửa hàng trong quá trình kiểm tra.
+
 ## Chạy dự án
 
 Chức năng ưu đãi mới: **Ưu đãi** (`/offers`) cho mã công khai; **Mã của tôi** (`/my-vouchers`) cho mã đã lưu và quà riêng đúng tài khoản. Quản trị tạo chương trình tại **Mã ưu đãi**, cấu hình lượt mỗi khách, mức giảm tối đa, kênh phát hành và điều kiện lần mua đầu/sau giao thành công. Lưu mã không giữ lượt. Xem [quy tắc và kiểm tra mã giảm giá](VOUCHER_REVIEW.md#chức-năng-đã-hoàn-thiện).

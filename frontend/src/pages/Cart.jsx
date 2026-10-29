@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { cartAPI } from '../utils/api';
+import { cartItemPrice, productPricing } from '../utils/productPricing';
 import { hasProductVariants, productStock, validProductSelection, sharesCartStock, productImageUrl } from '../utils/productVariants';
 import { FaShoppingCart, FaTrash, FaMinus, FaPlus } from 'react-icons/fa';
 
@@ -71,7 +72,7 @@ const Cart = () => {
     }
   };
 
-  const total = cartItems.reduce((sum, item) => sum + Number(item.product?.price ?? item.price) * item.quantity, 0);
+  const total = cartItems.reduce((sum, item) => sum + cartItemPrice(item) * item.quantity, 0);
   const hasUnavailableItem = cartItems.some(item => !item.product || item.product.isHidden || item.product.isArchived || !validProductSelection(item.product, item.size, item.color) || cartItems.filter(other => sharesCartStock(item, other)).reduce((sum, other) => sum + other.quantity, 0) > productStock(item.product, item.size, item.color));
 
   if (authLoading || loading) return <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4"><div className="spinner" /><p>Đang tải giỏ giày...</p></div>;
@@ -106,7 +107,8 @@ const Cart = () => {
                   <div className="flex-1 min-w-0">
                     <Link to={productUrl} className="font-semibold hover:text-red-600">{product?.name || item.name}</Link>
                     <p className="text-sm text-gray-600 mt-1">{item.color ? 'Màu: ' + item.color + ' · ' : ''}{item.size ? 'Size: ' + item.size : product?.sizes?.length ? 'Chưa chọn size' : 'Size theo mẫu'}</p>
-                    <p className="text-red-600 font-bold mt-2">{money(product?.price ?? item.price)}</p>
+                    <p className="text-red-600 font-bold mt-2">{money(cartItemPrice(item))}</p>
+                    {product && productPricing(product).discountAmount > 0 && <p className="mt-1 text-sm"><del className="text-gray-500">{money(product.price)}</del><span className="ml-2 font-semibold text-red-600">−{product.discountPercent}%</span></p>}
                     {(unavailable || stock === 0) && <p className="text-sm text-red-600 mt-2">{invalidSize ? 'Vui lòng xóa sản phẩm này và chọn lại màu, size đang bán.' : 'Mẫu giày hiện không còn khả dụng. Vui lòng xóa khỏi giỏ.'}</p>}
                     {product && stock > 0 && <p className="text-xs text-gray-500 mt-2">Còn {stock} đôi {hasProductVariants(product) ? 'cho màu và size này' : 'cho mẫu giày này'}</p>}
                     {!unavailable && stock > 0 && overstock && <p className="text-sm text-amber-700 mt-2">{item.quantity > 1 ? `Tồn kho đã giảm. Nhấn “−” để điều chỉnh dòng này về ${reducedQuantity} đôi.` : 'Tổng số lượng đang vượt tồn kho. Vui lòng giảm số lượng ở các dòng dùng chung kho hoặc xóa dòng không cần mua.'}{item.quantity > 1 && otherQuantity >= stock ? ' Sau đó điều chỉnh thêm các dòng dùng chung kho.' : ''}</p>}
@@ -118,7 +120,7 @@ const Cart = () => {
                       </div>
                       <button aria-label={'Xóa ' + (product?.name || item.name)} onClick={() => removeItem(item)} disabled={updating} className="text-red-600 p-2 disabled:opacity-40"><FaTrash /></button>
                     </div>
-                    <p className="font-bold text-gray-800 mt-3">Thành tiền: {money(Number(product?.price ?? item.price) * item.quantity)}</p>
+                    <p className="font-bold text-gray-800 mt-3">Thành tiền: {money(cartItemPrice(item) * item.quantity)}</p>
                   </div>
                 </article>
               );

@@ -2,6 +2,8 @@
 
 React, Vite, Tailwind CSS, React Router và Axios.
 
+Giảm giá sản phẩm: **Quản trị → Sản phẩm → Chỉnh sửa / Thêm sản phẩm → Giảm giá sản phẩm (%)**. Nhập số nguyên 0–100; form xem trước giá bán và có nút **Bỏ giảm giá**. Giá gốc được giữ riêng, áp dụng cùng mức giảm cho mọi màu/size. Catalog và chi tiết có giá gạch ngang, nhãn giảm; lọc/sắp xếp giá, giỏ và checkout dùng giá sau giảm. `src/utils/productPricing.js` dùng công thức chung trong `../shared/productPricing.js` với backend. Khi triển khai cần giữ thư mục `shared` bên cạnh `frontend` và `backend`. Voucher được tính giảm thêm trên tiền hàng sau giảm; đơn đã đặt giữ nguyên giá mua.
+
 Từ thư mục gốc dự án:
 
     npm ci --prefix frontend

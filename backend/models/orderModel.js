@@ -74,6 +74,8 @@ const orderSchema = new mongoose.Schema({
       quantity: { type: Number, required: true, min: 1, validate: Number.isSafeInteger },
       image: { type: String, required: true },
       price: money,
+      originalPrice: { ...money, required: false },
+      discountPercent: { type: Number, min: 0, max: 100, validate: Number.isSafeInteger },
       color: { type: String, trim: true, maxlength: 100, default: '' },
       inventoryVariant: { type: Boolean, default: false },
       size: { type: Number, min: 1, max: 60, validate: { validator: (value) => value == null || Number.isInteger(value * 2), message: 'Size giày phải theo bước 0.5' } },

@@ -1,4 +1,7 @@
 .shoe-storefront { --catalog-accent: var(--shop-accent); background: #f7f8fa; color: var(--shop-ink); min-height: 75vh; font-size: 18px; line-height: 1.5; }
+.catalog-discount-badge { position: absolute; top: 12px; left: 12px; padding: 6px 9px; border-radius: 8px; background: #c72026; color: #fff; font-size: 15px; font-weight: 700; line-height: 1.3; }
+.catalog-card-prices { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; }
+.catalog-card-original-price { color: #667085; font-size: 15px; }
 .catalog-shell { max-width: var(--shop-width); margin: 0 auto; padding: 0 32px 64px; }
 .catalog-breadcrumb { display: flex; align-items: center; gap: 12px; min-height: 64px; font-size: 15px; color: #667085; }
 .catalog-breadcrumb a { color: #555; }

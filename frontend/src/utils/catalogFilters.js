@@ -1,3 +1,5 @@
+import { productSalePrice } from './productPricing.js';
+
 // Catalog filters count product models, while stock belongs to a color/size pair.
 export const normalizeCatalogText = value => String(value ?? '')
   .normalize('NFD')
@@ -68,8 +70,8 @@ export const filterCatalogProducts = (products, filters = {}) => {
   const results = visibleProducts(products).filter(product => {
     if (categoryKey && normalizeCatalogText(product.category) !== categoryKey) return false;
     if (brands.size && !brands.has(normalizeCatalogText(product.brand))) return false;
-    if (range.min !== null && (!Number.isSafeInteger(product.price) || product.price < range.min)) return false;
-    if (range.max !== null && (!Number.isSafeInteger(product.price) || product.price > range.max)) return false;
+    if (range.min !== null && (!Number.isSafeInteger(product.price) || productSalePrice(product) < range.min)) return false;
+    if (range.max !== null && (!Number.isSafeInteger(product.price) || productSalePrice(product) > range.max)) return false;
     if (terms.length) {
       const searchable = normalizeCatalogText([
         product.name, product.brand, product.category, product.description, product.color,
@@ -80,8 +82,8 @@ export const filterCatalogProducts = (products, filters = {}) => {
     return matchesStock(product, colors, sizes, inStock);
   });
   const byNewest = (first, second) => timestamp(second) - timestamp(first);
-  if (sort === 'price_asc') return results.sort((first, second) => first.price - second.price || byNewest(first, second));
-  if (sort === 'price_desc') return results.sort((first, second) => second.price - first.price || byNewest(first, second));
+  if (sort === 'price_asc') return results.sort((first, second) => productSalePrice(first) - productSalePrice(second) || byNewest(first, second));
+  if (sort === 'price_desc') return results.sort((first, second) => productSalePrice(second) - productSalePrice(first) || byNewest(first, second));
   if (sort === 'rating') return results.sort((first, second) => rating(second) - rating(first)
     || reviewCount(second) - reviewCount(first) || byNewest(first, second));
   return results.sort(byNewest);

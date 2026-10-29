@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import ProductGallery from '../components/ProductGallery';
 import ProductStory from '../components/ProductStory';
 import { scrollToProductSection } from '../utils/productContent';
+import { productPricing, productSalePrice } from '../utils/productPricing';
 import { colorKey, hasProductVariants, productColors, productSizes, productStock, validProductSelection, productImageUrl } from '../utils/productVariants';
 import { 
   FaShoppingCart, FaArrowLeft, FaCheckCircle, FaExclamationCircle,
@@ -216,7 +217,8 @@ const ProductDetail = () => {
               {/* Price */}
               <div className="bg-red-50 p-4 rounded-lg mb-6">
                 <p className="text-sm text-gray-600 mb-1">Giá bán</p>
-                <p className="text-4xl font-bold text-red-600">{product.price.toLocaleString('vi-VN')} ₫</p>
+                <p className="text-4xl font-bold text-red-600 break-words">{productSalePrice(product).toLocaleString('vi-VN')} ₫</p>
+                {productPricing(product).discountAmount > 0 && <div className="mt-3 flex flex-wrap items-center gap-3"><del className="text-gray-500" aria-label="Giá gốc">{product.price.toLocaleString('vi-VN')} ₫</del><span className="rounded bg-red-600 px-2 py-1 text-sm font-bold text-white">Giảm {product.discountPercent}%</span><span className="text-sm text-red-700">Tiết kiệm {productPricing(product).discountAmount.toLocaleString('vi-VN')} ₫ / đôi</span></div>}
               </div>
 
               {/* Description */}

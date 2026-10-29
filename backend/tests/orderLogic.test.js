@@ -197,6 +197,36 @@ test('Miễn vận chuyển chỉ loại phí ship một lần; voucher tiền c
   assert.throws(() => calculateOrderPricing(100000, { type: 'percent', discount: 101 }));
 });
 
+test('checkout charges the server product sale price and snapshots the sale for order history', async t => {
+  const item = product({ discountPercent: 20, __v: 2 });
+  const customerId = id();
+  const { saved, stockCalls } = mockCheckout(t, [item], [{ _id: customerId, cart: [cartItem(item, { quantity: 2, price: 1 })] }]);
+  const res = response();
+  await addOrderItems(checkoutRequest(customerId, { expectedTotalPrice: 350000, discountPercent: 100, itemsPrice: 1 }), res);
+  assert.equal(res.statusCode, 201, res.body?.message);
+  assert.equal(saved[0].itemsPrice, 320000);
+  assert.equal(saved[0].totalPrice, 350000);
+  assert.equal(saved[0].orderItems[0].price, 160000);
+  assert.equal(saved[0].orderItems[0].originalPrice, 200000);
+  assert.equal(saved[0].orderItems[0].discountPercent, 20);
+  assert.equal(stockCalls[0].filter.discountPercent, 20);
+  item.price = 300000; item.discountPercent = 0;
+  assert.equal(saved[0].orderItems[0].price, 160000);
+  assert.equal(saved[0].totalPrice, 350000);
+});
+
+test('a changed discount returns 409 before reserving stock when the customer confirmed the old total', async t => {
+  const item = product({ discountPercent: 25 });
+  const customerId = id();
+  const { saved, stockCalls } = mockCheckout(t, [item], [{ _id: customerId, cart: [cartItem(item)] }]);
+  const res = response();
+  await addOrderItems(checkoutRequest(customerId, { expectedTotalPrice: 230000 }), res);
+  assert.equal(res.statusCode, 409);
+  assert.equal(saved.length, 0);
+  assert.equal(stockCalls.length, 0);
+  assert.equal(item.countInStock, 5);
+});
+
 test('Voucher bắt buộc đúng thời gian, trạng thái, lượt và mức đơn tối thiểu', () => {
   const voucher = { type: 'percent', discount: 10, isActive: true, usedCount: 0, maxUses: 1, minOrder: 100000, startDate: new Date('2026-01-01'), endDate: new Date('2026-12-31') };
   const now = new Date('2026-06-01');

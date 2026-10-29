@@ -355,3 +355,34 @@ test('uploaded image paths resolve to the API origin when a separate API URL is 
   assert.equal(module.exports.productImageUrl(''), '/shoe.svg');
   assert.equal(module.exports.productImageUrl({ path: '/uploads/products/shoe.png' }), '/shoe.svg');
 });
+
+test('product details and cart show the same percentage sale without discounting the cart snapshot twice', async () => {
+  const { ProductDetail, Cart } = await components;
+  const saleShoe = { ...shoe, discountPercent: 25 };
+  const detail = setup(productState('Đen', '40'));
+  detail.values[0] = saleShoe;
+  const detailText = text(render(ProductDetail, detail));
+  assert.match(detailText, /75\.000/);
+  assert.match(detailText, /Giảm\s+25\s*%/);
+  assert.match(detailText, /Tiết kiệm\s+25\.000/);
+  const cart = setup([[{ ...black, product: saleShoe, price: 75000, quantity: 2 }], false, false, '']);
+  const cartText = text(render(Cart, cart));
+  assert.match(cartText, /Thành tiền:\s+150\.000₫/);
+  assert.match(cartText, /Tổng dự kiến\s+180\.000₫/);
+});
+
+test('checkout uses sale totals for voucher previews and the confirmed server total', async () => {
+  const { Checkout } = await components;
+  const shipping = { name: 'Customer', phone: '0901234567', address: 'Street', city: 'City', district: '', ward: '', notes: '' };
+  const row = { ...black, product: { ...shoe, discountPercent: 25 }, price: 1, quantity: 2 };
+  const h = setup([[row], false, false, 2, '', [], '', null, '', false, null, shipping, 'COD']);
+  assert.match(text(render(Checkout, h)), /Tạm tính\s+150\.000₫/);
+  await findButton(render(Checkout, h), 'Đặt giày').props.onClick();
+  const payload = h.calls.find(call => call.name === 'createOrder').args[0];
+  assert.equal(payload.expectedTotalPrice, 180000);
+  assert.equal(payload.discountPercent, undefined);
+  const voucher = setup([[row], false, false, 2, '', [], 'SALE', null, '', false, null, shipping, 'COD']);
+  const form = nodes(render(Checkout, voucher)).find(node => node.type === 'form');
+  await form.props.onSubmit({ preventDefault() {} });
+  assert.deepEqual(voucher.calls.find(call => call.name === 'applyVoucher').args, ['SALE', 150000]);
+});

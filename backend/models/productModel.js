@@ -74,6 +74,7 @@ const productSchema = mongoose.Schema(
         },
 
         price: { type: Number, required: true, default: 0, min: 0, validate: Number.isSafeInteger },
+        discountPercent: { type: Number, default: 0, required: true, min: 0, max: 100, validate: Number.isSafeInteger },
 
         countInStock: {
             type: Number, required: true, default: 0, min: 0,

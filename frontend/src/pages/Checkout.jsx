@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { cartAPI, ordersAPI, vouchersAPI } from '../utils/api';
 import { productImageUrl } from '../utils/productVariants';
+import { cartItemPrice } from '../utils/productPricing';
 import { canPayWithVnpay, vnpaySandboxUrl } from '../utils/vnpay';
 import VnpayPaymentButton from '../components/VnpayPaymentButton';
 import VoucherSelector from '../components/VoucherSelector';
@@ -76,7 +77,7 @@ const Checkout = () => {
     };
   }, [user?._id]);
 
-  const subtotal = cartItems.reduce((total, item) => total + Number(item.product?.price ?? item.price) * item.quantity, 0);
+  const subtotal = cartItems.reduce((total, item) => total + cartItemPrice(item) * item.quantity, 0);
   voucherContext.current = `${user?._id || ''}:${subtotal}`;
   useEffect(() => {
     voucherRequest.current += 1; voucherBusy.current = false;
@@ -241,7 +242,7 @@ const Checkout = () => {
                     <div key={item._id} className="flex gap-4 py-4">
                       <img src={productImageUrl(item.product?.image || item.image)} alt={item.product?.name || item.name} className="w-16 h-16 object-contain rounded" onError={event => { event.currentTarget.onerror = null; event.currentTarget.src = '/shoe.svg'; }} />
                       <div className="flex-1"><p className="font-semibold">{item.product?.name || item.name}</p><p className="text-sm text-gray-600">{item.color ? 'Màu ' + item.color + ' · ' : ''}{item.size ? 'Size ' + item.size + ' · ' : ''}Số lượng: {item.quantity}</p></div>
-                      <strong className="text-red-600">{money(Number(item.product?.price ?? item.price) * item.quantity)}</strong>
+                      <strong className="text-red-600">{money(cartItemPrice(item) * item.quantity)}</strong>
                     </div>
                   ))}
                 </div>
@@ -265,7 +266,7 @@ const Checkout = () => {
               <dl className="space-y-3 text-gray-600">
                 <div className="flex justify-between gap-3"><dt>Tạm tính</dt><dd>{money(totals.itemsPrice)}</dd></div>
                 <div className="flex justify-between gap-3"><dt>Phí vận chuyển</dt><dd>{totals.shippingPrice === 0 ? 'Miễn phí' : money(totals.shippingPrice)}</dd></div>
-                {totals.discountAmount > 0 && <div className="flex justify-between gap-3 text-green-700"><dt>Giảm giá</dt><dd>-{money(totals.discountAmount)}</dd></div>}
+                {totals.discountAmount > 0 && <div className="flex justify-between gap-3 text-green-700"><dt>Giảm thêm từ voucher</dt><dd>-{money(totals.discountAmount)}</dd></div>}
                 <div className="flex justify-between gap-3 border-t pt-4 text-xl font-bold text-gray-900"><dt>Tổng</dt><dd className="text-red-600">{money(totals.totalPrice)}</dd></div>
               </dl>
               <p className="text-xs text-gray-500 mt-4">Giá và ưu đãi được kiểm tra lại khi đặt hàng. Cửa hàng sẽ thông báo nếu sản phẩm hoặc mã ưu đãi không còn khả dụng.</p>

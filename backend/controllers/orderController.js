@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { productPricing } from '../../shared/productPricing.js';
 import { randomUUID } from 'node:crypto';
 import Order from '../models/orderModel.js';
 import Customer from '../models/customerModel.js';
@@ -165,6 +166,7 @@ const addOrderItems = async (req, res) => {
       if (!product || product.isHidden || product.isArchived) throw orderError(400, `Sản phẩm ${item.name} hiện không còn bán`);
       if (!isPositiveInteger(item.quantity)) throw orderError(400, 'Số lượng sản phẩm phải là số nguyên dương');
       if (!isMoney(product.price)) throw orderError(400, `Giá sản phẩm ${product.name} không hợp lệ`);
+      const pricing = productPricing(product);
       const variant = getProductVariant(product, item.size, item.color);
       let size;
       if (item.size != null) {
@@ -176,7 +178,8 @@ const addOrderItems = async (req, res) => {
         throw orderError(400, `Vui lòng chọn size cho ${product.name} trong giỏ hàng`);
       }
       return {
-        name: product.name, quantity: item.quantity, image: product.image, price: product.price,
+        name: product.name, quantity: item.quantity, image: product.image, price: pricing.salePrice,
+        ...(pricing.discountPercent > 0 ? { originalPrice: pricing.originalPrice, discountPercent: pricing.discountPercent } : {}),
         product: product._id, ...(size == null ? {} : { size }),
         ...(variant ? { color: variant.color, inventoryVariant: true } : {}),
       };
@@ -221,6 +224,8 @@ const addOrderItems = async (req, res) => {
       const version = productVersions.get(String(item.product));
       const updated = await Product.findOneAndUpdate({
         ...filter, isHidden: { $ne: true }, isArchived: { $ne: true }, price: product.price,
+        // Also protect legacy SKUs without __v from a simultaneous sale edit.
+        discountPercent: product.discountPercent || { $in: [0, null] },
         ...(Number.isSafeInteger(version) ? { __v: version } : {}),
         ...(!item.inventoryVariant && sizes.length ? { sizes: { $all: sizes } } : {}),
       }, { ...update, $addToSet: { checkoutReservations: token } }, { new: true });

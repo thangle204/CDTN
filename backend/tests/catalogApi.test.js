@@ -378,6 +378,43 @@ test('legacy product review writes are retired and cannot modify a product', asy
   assert.equal(lookup.mock.callCount(), 0);
 });
 
+test('only admins can configure validated product percentages; legacy edits keep their stock', async t => {
+  installUser(t);
+  const save = t.mock.method(Product.prototype, 'save', async function () { await this.validate(); return this; });
+  for (const discountPercent of [-1, 101, 1.5, null, '', true, {}, []]) {
+    const result = await request('/api/products', { method: 'POST', auth: true, body: { ...shoeFields, variants: [{ color: 'Trắng', size: 40, quantity: 3 }], discountPercent } });
+    assert.equal(result.status, 400, JSON.stringify(discountPercent));
+  }
+  assert.equal(save.mock.callCount(), 0);
+  const created = await request('/api/products', { method: 'POST', auth: true, body: { ...shoeFields, variants: [{ color: 'Trắng', size: 40, quantity: 3 }], discountPercent: 20, salePrice: 1 } });
+  assert.equal(created.status, 201);
+  assert.equal(created.body.price, 200000);
+  assert.equal(created.body.discountPercent, 20);
+  assert.equal(created.body.salePrice, undefined);
+  const product = new Product({ ...shoeFields, _id: productId, __v: 4 });
+  t.mock.method(Product, 'findById', async () => product);
+  t.mock.method(Customer, 'exists', async () => { throw new Error('A discount edit must not convert legacy stock'); });
+  t.mock.method(Order, 'exists', async () => { throw new Error('A discount edit must not inspect legacy orders'); });
+  const edited = await request(`/api/products/${productId}`, { method: 'PUT', auth: true, body: { version: 4, discountPercent: 25 } });
+  assert.equal(edited.status, 200);
+  assert.equal(edited.body.discountPercent, 25);
+  assert.equal(edited.body.countInStock, 3);
+  assert.equal((await request(`/api/products/${productId}`, { method: 'PUT', auth: true, body: { version: 3, discountPercent: 0 } })).status, 409);
+  assert.equal((await request(`/api/products/${productId}/validate-update`, { method: 'POST', auth: true, body: { version: 4, discountPercent: 101 } })).status, 400);
+  const cleared = await request(`/api/products/${productId}`, { method: 'PUT', auth: true, body: { version: 4, discountPercent: 0 } });
+  assert.equal(cleared.status, 200);
+  assert.equal(cleared.body.discountPercent, 0);
+  installUser(t, false);
+  assert.equal((await request(`/api/products/${productId}`, { method: 'PUT', auth: true, body: { discountPercent: 100 } })).status, 403);
+});
+
+test('the product schema enforces percentages even outside the HTTP controller', async () => {
+  for (const discountPercent of [-1, 101, 0.5, null]) {
+    await assert.rejects(new Product({ ...shoeFields, discountPercent }).validate(), { name: 'ValidationError' });
+  }
+  for (const discountPercent of [undefined, 0, 100]) await new Product({ ...shoeFields, discountPercent }).validate();
+});
+
 test('review deletion requires its author or an administrator', async (t) => {
   installUser(t, false);
   const review = { _id: 'review-a', user: '000000000000000000000099', rating: 4 };

@@ -132,7 +132,7 @@ test('creating uploads the chosen file first then sends normalized image and var
   await h.submit();
   assert.deepEqual(h.calls[0], { name: 'uploadImage', args: [image] });
   assert.deepEqual(h.calls[1], { name: 'createProduct', args: [{
-    name: 'Sneaker mới', brand: 'Nike', price: 200000, category: 'Sneaker', description: 'Giày mới',
+    name: 'Sneaker mới', brand: 'Nike', price: 200000, discountPercent: 0, category: 'Sneaker', description: 'Giày mới',
     image: '/uploads/products/new-shoe.png', variants: [{ color: 'Trắng', size: 40, quantity: 20 }, { color: 'Đen', size: 41.5, quantity: 10 }],
   }] });
   assert.equal(h.calls[2].name, 'getAllProducts');
@@ -176,7 +176,7 @@ test('editing keeps the stored image and sends version without uploading another
   await h.submit();
   assert.deepEqual(h.calls[0], { name: 'updateProduct', args: ['shoe-old', {
     name: 'Old sneaker', brand: 'Nike', description: 'Old description', category: 'Sneaker', image: oldProduct.image,
-    price: 100000, variants: [{ color: 'Trắng', size: 40, quantity: 19 }], version: 7,
+    price: 100000, discountPercent: 0, variants: [{ color: 'Trắng', size: 40, quantity: 19 }], version: 7,
   }] });
   assert.equal(h.calls.some(call => call.name === 'uploadImage'), false);
 });
@@ -187,6 +187,43 @@ const legacyProduct = {
   sizes: [40, 41], color: 'Trắng', variants: [],
 };
 const edit = h => nodes(h.render()).find(node => node.type === 'button' && node.props.title === 'Chỉnh sửa').props.onClick();
+
+test('admins can preview and save a percentage sale without converting legacy inventory', async () => {
+  const h = setup([legacyProduct]); edit(h);
+  assert.equal(h.input(props => props.name === 'discountPercent').props.value, 0);
+  h.change('discountPercent', '25');
+  assert.match(text(h.render()), /75\.000₫/);
+  assert.match(text(h.render()), /Giảm\s+25\.000\s*₫/);
+  await h.submit();
+  const payload = h.calls.find(call => call.name === 'updateProduct').args[1];
+  assert.equal(payload.price, 100000);
+  assert.equal(payload.discountPercent, 25);
+  assert.equal(payload.version, 7);
+  assert.equal(Object.hasOwn(payload, 'variants'), false);
+  assert.equal(h.calls.some(call => call.name === 'uploadImage'), false);
+});
+
+test('existing discounts load and can be removed while preserving the original price', async () => {
+  const h = setup([{ ...legacyProduct, discountPercent: 40 }]); edit(h);
+  assert.equal(h.input(props => props.name === 'discountPercent').props.value, 40);
+  assert.match(text(h.render()), /60\.000₫/);
+  h.button('Bỏ giảm giá').props.onClick();
+  assert.equal(h.input(props => props.name === 'discountPercent').props.value, '0');
+  await h.submit();
+  const payload = h.calls.find(call => call.name === 'updateProduct').args[1];
+  assert.equal(payload.price, 100000);
+  assert.equal(payload.discountPercent, 0);
+});
+
+test('invalid percentages are rejected before uploading images or saving a product', async () => {
+  for (const value of ['-1', '101', '1.5', '', 'abc']) {
+    const h = setup(); h.open(); fill(h); h.selectImage(image);
+    h.change('discountPercent', value);
+    await h.submit();
+    assert.equal(h.calls.length, 0, value);
+    assert.match(text(h.render()), /Giảm giá sản phẩm phải là số nguyên từ 0 đến 100%/);
+  }
+});
 const convert = (h, checked) => h.input(props => props.id === 'convert-legacy-inventory').props.onChange({ target: { checked } });
 const variantInputs = h => nodes(h.render()).filter(node => node.type === 'input' && node.props.id?.startsWith('variant-'));
 
@@ -200,7 +237,7 @@ test('legacy metadata edits keep shared stock and omit all inventory fields with
     await h.submit();
     assert.deepEqual(h.calls[0], { name: 'updateProduct', args: ['legacy-shoe', {
       name: 'Tên mới', brand: 'Nike', description: 'Mô tả mới', category: 'Sneaker',
-      image: legacyProduct.image, price: 150000, version: 7,
+      image: legacyProduct.image, price: 150000, discountPercent: 0, version: 7,
     }] });
     assert.equal(product.countInStock, 23);
     assert.equal(h.calls.some(call => call.name === 'uploadImage' || call.name === 'validateUpdate'), false);

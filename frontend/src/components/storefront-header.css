@@ -356,11 +356,13 @@
     padding-bottom: 16px;
   }
   .store-header__main .store-header__logo { font-size: 30px; justify-self: center; grid-row: 1; }
-  .store-header__actions { gap: 10px; width: 100%; margin: 0; grid-row: 2; justify-content: space-between; }
-  .store-header__action { min-width: 0; font-size: 13px; min-height: 48px; gap: 6px; padding: 8px 5px; }
+  .store-header__actions { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; width: 100%; margin: 0; grid-row: 2; align-items: stretch; }
+  .store-header__action { min-width: 0; font-size: 13px; min-height: 48px; gap: 6px; padding: 8px 2px; }
   .store-header__action span {
     position: static;
-    white-space: nowrap;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.35;
   }
   .store-header__menu-button { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; min-height: 48px; padding: 3px 0; }
   .store-header__search {

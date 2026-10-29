@@ -87,7 +87,7 @@ const product = {_id:'shoe-1', name:'Sneaker', price:100000, countInStock:10, si
 const item = {_id:'cart-1',product,size:40,price:100000,quantity:2};
 const reviewStates = selected => [product,false,2,selected,'','',false,[{_id:'review-1',name:'Customer',rating:5,comment:'Great',createdAt:'2026-10-12'}],'',''];
 const shipping = {name:' Customer ',phone:'0901234567',address:' Street ',city:' City ',district:' District ',ward:' Ward ',notes:' Note '};
-const checkoutStates = (quote=null, step=2) => [[item],false,false,step,'',[],'',quote,'',false,null,shipping,'COD'];
+const checkoutStates = (quote=null, step=2) => [[item],false,false,step,'',quote,'',false,null,shipping,'COD'];
 let assertions = 0;
 const test = async (name, action) => { await action(); assertions++; console.log('PASS ' + name); };
 (async () => {
@@ -200,7 +200,7 @@ const test = async (name, action) => { await action(); assertions++; console.log
     await button(components.Checkout(),'Đặt giày').props.onClick();
     assert.deepEqual(h.values[0],refreshed);
     assert.equal(h.values[3],1);
-    assert.equal(h.values[7],null);
+    assert.equal(h.values[5],null);
     assert.equal(h.values[6],'');
     assert.equal(h.values[4],'Price or voucher changed; please confirm again');
     assert.equal(h.values[2],false);
@@ -221,7 +221,7 @@ const test = async (name, action) => { await action(); assertions++; console.log
     assert.deepEqual(h.calls.find(call=>call.name==='createOrder').args[0].expectedCart,[{product:'shoe-1',color:'Trắng',size:40,quantity:2}]);
     assert.deepEqual(h.values[0],refreshed);
     assert.equal(h.values[3],1);
-    assert.equal(h.values[10],null);
+    assert.equal(h.values[8],null);
     assert.equal(h.calls.filter(call=>call.name==='createOrder').length,1);
   });
   await test('shipping voucher renders one waiver without extra discount', async () => {
@@ -233,13 +233,12 @@ const test = async (name, action) => { await action(); assertions++; console.log
   });
   await test('voucher uses server quote for totals', async () => {
     const h = setup(checkoutStates(null));
-    h.values[6]='SHOE10';
     const quote={voucher:{code:'SHOE10'},itemsPrice:200000,shippingPrice:30000,discountAmount:20000,totalPrice:210000};
     h.request = async (name,args) => { h.calls.push({name,args}); return {data:quote}; };
-    await form(components.Checkout()).props.onSubmit(event);
+    await allNodes(components.Checkout()).find(node => node.type?.name === 'VoucherSelector').props.onChoose('SHOE10');
     await new Promise(resolve=>setImmediate(resolve));
     assert.deepEqual(h.calls[0],{name:'applyVoucher',args:['SHOE10',200000]});
-    assert.deepEqual(h.values[7],quote);
+    assert.deepEqual(h.values[5],quote);
   });
   await test('forgot password reports delivery configuration failure', async () => {
     const h = setup(['customer@example.test',false,'',false,'']);

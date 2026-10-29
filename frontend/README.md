@@ -2,6 +2,10 @@
 
 React, Vite, Tailwind CSS, React Router và Axios.
 
+Địa chỉ giao hàng: **Tài khoản → Chỉnh sửa thông tin** có phần địa chỉ mặc định (người nhận, số điện thoại và địa chỉ). Checkout lấy `user.shippingAddress` và hỏi có đổi thông tin giao hàng không. Chọn Có mở form chỉ dùng cho đơn hiện tại; chọn Không lấy lại địa chỉ đã lưu. Tài khoản chưa có địa chỉ được yêu cầu điền và lưu ở bước Tiếp tục xác nhận; `updateProfile` dùng `onlyIfAddressMissing: true`, backend ghi có điều kiện để không đè địa chỉ từ tab khác. Ghi chú không lưu vào tài khoản. Các hàm chuẩn hóa/kiểm tra dùng `src/utils/shippingAddress.js`; phản hồi muộn sau đổi tài khoản không được điền địa chỉ của người cũ.
+
+Kiểm tra địa chỉ ngày **29/10/2026**: **394 backend, 221 frontend**, build đạt; 5 ca HTTP/MongoDB trong database thử riêng đã dọn và 15 ca Chrome (1440/390/320px, toàn bộ API giả lập) đạt.
+
 Giảm giá sản phẩm: **Quản trị → Sản phẩm → Chỉnh sửa / Thêm sản phẩm → Giảm giá sản phẩm (%)**. Nhập số nguyên 0–100; form xem trước giá bán và có nút **Bỏ giảm giá**. Giá gốc được giữ riêng, áp dụng cùng mức giảm cho mọi màu/size. Catalog và chi tiết có giá gạch ngang, nhãn giảm; lọc/sắp xếp giá, giỏ và checkout dùng giá sau giảm. `src/utils/productPricing.js` dùng công thức chung trong `../shared/productPricing.js` với backend. Khi triển khai cần giữ thư mục `shared` bên cạnh `frontend` và `backend`. Voucher được tính giảm thêm trên tiền hàng sau giảm; đơn đã đặt giữ nguyên giá mua.
 
 Từ thư mục gốc dự án:
@@ -15,11 +19,11 @@ Frontend dùng /api theo mặc định. Vite chuyển tiếp tới http://localh
 
 Giao diện hỗ trợ chọn size giày, giỏ theo từng size, checkout, voucher, đơn hàng, khôi phục mật khẩu và quản trị. Backend xác định giá cuối cùng và xác nhận thanh toán.
 
-Ưu đãi đã có trang **Kho ưu đãi** (`/offers`) và **Mã của tôi** (`/my-vouchers`), dùng `VoucherCard.jsx` và `vouchers.css`. Khách xem/lưu mã công khai hoặc dùng ngay qua giỏ đến checkout; lưu không giữ lượt. Mã riêng được cấp cho đúng tài khoản đủ điều kiện và không xuất hiện trong kho công khai. Checkout dùng `VoucherSelector.jsx` để gợi ý mã tiết kiệm nhất, hiển thị lý do chưa dùng được và không tự thay lựa chọn của khách. Phản hồi cũ sau đổi tài khoản/giỏ không ghi đè kết quả mới.
+Ưu đãi có trang **Kho ưu đãi** (`/offers`) và **Mã của tôi** (`/my-vouchers`), dùng `VoucherCard.jsx` và `vouchers.css`. Khách phải lưu mã công khai trước khi dùng; lưu không giữ lượt. Thẻ đã lưu trong Kho ưu đãi tự mờ, không có nút/link thao tác và hiện **Mã đã được lưu** ở cuối; tải lại vẫn giữ trạng thái. Dùng ngay hoặc bỏ lưu thực hiện trong Mã của tôi. Mã riêng được cấp cho đúng tài khoản đủ điều kiện và không xuất hiện trong kho công khai. Checkout bỏ ô nhập mã tự do, dùng `VoucherSelector.jsx` chỉ chọn mã đã lưu/được cấp của tài khoản, gợi ý mã tiết kiệm nhất và hiển thị lý do chưa dùng được. Backend kiểm tra sở hữu ở cả preview và đặt hàng; không tự lưu khi truyền mã qua URL. Phản hồi cũ sau đổi tài khoản/giỏ không ghi đè kết quả mới.
 
 **Quản trị → Mã ưu đãi** hỗ trợ công khai/riêng, lần mua đầu/quà sau giao, lượt mỗi khách, trần phần trăm và giờ Việt Nam UTC+7. Form chỉ gửi trường sửa và phiên bản; không đổi giờ gốc khi sửa mô tả. Mã đã phát hành giữ quyền lợi ổn định; tạo chương trình mới để đổi điều kiện. Đơn VNPAY mới có hạn chờ 30 phút và thông báo tự đối soát; hủy gián đoạn có nút tiếp tục xử lý. Xem [quy tắc đầy đủ](../VOUCHER_REVIEW.md).
 
-Kiểm tra ngày **28–29/10/2026**: **381 backend, 201 frontend đạt**, build thành công; 7 ca HTTP/MongoDB trong database thử nghiệm riêng và 13 trường hợp Chrome (1440/390/320px) đạt. Chrome chặn mọi API, xử lý 14 thao tác ghi trong bộ nhớ. Chưa thử một giao dịch VNPAY mới qua worker tự động với cổng thật; các phản hồi QueryDR trong kiểm tra worker được giả lập.
+Kiểm tra mới nhất ngày **29/10/2026**: **391 backend, 213 frontend đạt**, build thành công; 22 ca HTTP/MongoDB trong các database thử riêng và 17 trường hợp Chrome (1440/390/320px) đạt. Chrome chặn mọi API, xử lý 20 thao tác ghi trong bộ nhớ, gồm lưu/làm mờ thẻ và chỉ dùng mã trong tài khoản tại checkout. Chưa thử một giao dịch VNPAY mới qua worker tự động với cổng thật; các phản hồi QueryDR trong kiểm tra worker được giả lập.
 
 Trang chi tiết giày có bộ ảnh trong `ProductGallery.jsx`, bài giới thiệu trong `ProductStory.jsx` và giao diện chung tại `product-detail.css`. Khách chọn ảnh nhỏ, bấm ảnh chính để phóng to, dùng phím mũi tên chuyển ảnh hoặc Escape để đóng. Các liên kết giới thiệu/thông số/đánh giá cuộn đến nội dung mà vẫn giữ màu và size đang chọn.
 

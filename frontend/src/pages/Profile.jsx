@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
-import { FaUser, FaEnvelope, FaPhone, FaLock, FaEdit, FaSave, FaTimes } from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaPhone, FaLock, FaEdit, FaSave, FaTimes, FaMapMarkerAlt } from 'react-icons/fa';
+import { SHIPPING_ADDRESS_FIELDS, shippingAddressOf, hasShippingAddress, cleanShippingAddress, sameShippingAddress, shippingAddressLine } from '../utils/shippingAddress';
 
 const Profile = () => {
   const { user, updateProfile, loading: authLoading } = useAuth();
@@ -14,6 +15,7 @@ const Profile = () => {
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
+    shippingAddress: shippingAddressOf(),
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
@@ -21,7 +23,8 @@ const Profile = () => {
 
   const [originalData, setOriginalData] = useState({
     name: '',
-    phone: ''
+    phone: '',
+    shippingAddress: shippingAddressOf(),
   });
   const mounted = useRef(true);
   const submission = useRef(0);
@@ -44,7 +47,8 @@ const Profile = () => {
     if (user) {
       const userData = {
         name: user.name || '',
-        phone: user.phone || ''
+        phone: user.phone || '',
+        shippingAddress: shippingAddressOf(user),
       };
       setFormData({
         ...userData,
@@ -57,7 +61,9 @@ const Profile = () => {
   }, [user]);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    if (name.startsWith('shippingAddress.')) setFormData(previous => ({ ...previous, shippingAddress: { ...(previous.shippingAddress || shippingAddressOf(user)), [name.split('.')[1]]: value } }));
+    else setFormData(previous => ({ ...previous, [name]: value }));
     setError('');
   };
 
@@ -72,9 +78,11 @@ const Profile = () => {
     setSuccess('');
 
     try {
-      const hasInfoChange = 
+      const hasContactChange =
         formData.name !== originalData.name || 
         formData.phone !== originalData.phone;
+      const hasAddressChange = !sameShippingAddress(formData.shippingAddress, originalData.shippingAddress);
+      const hasInfoChange = hasContactChange || hasAddressChange;
       
       const hasPasswordChange = changingPassword && formData.newPassword;
 
@@ -108,10 +116,11 @@ const Profile = () => {
 
       const updateData = {};
       
-      if (hasInfoChange) {
+      if (hasContactChange) {
         updateData.name = formData.name;
         updateData.phone = formData.phone;
       }
+      if (hasAddressChange) updateData.shippingAddress = cleanShippingAddress(formData.shippingAddress);
 
       if (hasPasswordChange) {
         updateData.currentPassword = formData.currentPassword;
@@ -128,11 +137,12 @@ const Profile = () => {
         name: result.data.name,
         email: result.data.email,
         phone: result.data.phone,
-        isAdmin: result.data.isAdmin
+        isAdmin: result.data.isAdmin,
+        shippingAddress: result.data.shippingAddress,
       };
 
       setSuccess(hasPasswordChange ? 'Đổi mật khẩu thành công. Các phiên đăng nhập cũ đã hết hiệu lực.' : 'Cập nhật thông tin thành công!');
-      setOriginalData({ name: updatedUser.name, phone: updatedUser.phone });
+      setOriginalData({ name: updatedUser.name, phone: updatedUser.phone, shippingAddress: shippingAddressOf(updatedUser) });
       setEditing(false);
       
       setChangingPassword(false);
@@ -158,6 +168,7 @@ const Profile = () => {
     setFormData({
       name: originalData.name,
       phone: originalData.phone,
+      shippingAddress: originalData.shippingAddress || shippingAddressOf(user),
       currentPassword: '',
       newPassword: '',
       confirmPassword: ''
@@ -247,6 +258,16 @@ const Profile = () => {
                 placeholder="0xxxxxxxxx"
               />
             </div>
+
+            <section className="border-t pt-6" aria-labelledby="profile-address-title">
+              <h2 id="profile-address-title" className="mb-2 flex items-center gap-2 text-lg font-semibold text-gray-800"><FaMapMarkerAlt className="text-red-600" />Địa chỉ giao hàng mặc định</h2>
+              <p className="mb-4 text-sm text-gray-500">Dùng để điền sẵn khi thanh toán. Bạn vẫn có thể đổi thông tin giao hàng riêng cho từng đơn.</p>
+              {editing ? <div className="grid gap-4 sm:grid-cols-2">
+                {SHIPPING_ADDRESS_FIELDS.map(([field, label, required, max]) => <label key={field} htmlFor={`profile-shipping-${field}`} className={`block text-sm font-medium text-gray-700${field === 'address' ? ' sm:col-span-2' : ''}`}>{label}
+                  <input id={`profile-shipping-${field}`} name={`shippingAddress.${field}`} type={field === 'phone' ? 'tel' : 'text'} maxLength={max} value={formData.shippingAddress?.[field] || ''} onChange={handleChange} disabled={loading} required={required && (hasShippingAddress(user.shippingAddress) || !sameShippingAddress(formData.shippingAddress, originalData.shippingAddress))} autoComplete={field === 'name' ? 'shipping name' : field === 'phone' ? 'shipping tel' : field === 'address' ? 'shipping street-address' : 'off'} className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-red-500" />
+                </label>)}
+              </div> : hasShippingAddress(user.shippingAddress) ? <div className="rounded-lg border border-gray-200 bg-gray-50 p-4"><p className="font-semibold text-gray-800">{user.shippingAddress.name} · {user.shippingAddress.phone}</p><p className="mt-2 break-words text-gray-600">{shippingAddressLine(user.shippingAddress)}</p></div> : <p className="rounded-lg bg-gray-50 p-4 text-gray-600">Bạn chưa lưu địa chỉ giao hàng. Bấm Chỉnh sửa thông tin để thêm, hoặc nhập địa chỉ khi thanh toán lần đầu.</p>}
+            </section>
 
             {/* Đổi mật khẩu */}
             {editing && (

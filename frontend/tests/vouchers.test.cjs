@@ -121,16 +121,91 @@ test('an out-of-order recommendation response cannot overwrite a new cart or acc
   h.render(VoucherSelector, { userId: 'a', subtotal: 500000 });h.flush();
   h.render(VoucherSelector, { userId: 'b', subtotal: 900000 });
   first.resolve({ data: [{ code: 'OLD' }] });await settle();assert.deepEqual(h.values[0], []);
-  h.flush();second.resolve({ data: [{ code: 'CURRENT', eligible: true }] });await settle();assert.equal(h.values[0][0].code, 'CURRENT');
+  h.flush();second.resolve({ data: [{ code: 'CURRENT', walletId: 'saved-current', eligible: true }] });await settle();assert.equal(h.values[0][0].code, 'CURRENT');
 });
 
 test('checkout ignores a late voucher quote or error from a different account and blocks simultaneous apply requests', async () => {
   const cart = [{ _id: 'cart', product: { _id: 'shoe', price: 500000 }, quantity: 1 }];
-  const h = setup([cart, false, false, 1, '', [], '', null, '', false, null, {}, 'COD']), waiting = deferred();
+  const h = setup([cart, false, false, 1, '', null, '', false, null, {}, 'COD']), waiting = deferred();
   h.request = async (name, args) => { h.calls.push({ name, args });return waiting.promise; };
   let tree = h.render(Checkout);const choose = nodes(tree).find(node => node.type?.name === 'VoucherSelector').props.onChoose;
   const operation = choose('OLD');await choose('OTHER');assert.equal(h.calls.length, 1);
-  h.auth = { ...h.auth, user: { _id: 'new-owner' } };h.render(Checkout);h.values[7] = { voucher: { code: 'CURRENT' }, totalPrice: 500000 };
+  h.auth = { ...h.auth, user: { _id: 'new-owner' } };h.render(Checkout);h.values[5] = { voucher: { code: 'CURRENT' }, totalPrice: 500000 };
   waiting.reject({ response: { data: { message: 'Old quote failed' } } });await operation;
-  assert.equal(h.values[7].voucher.code, 'CURRENT');assert.equal(h.values[8], '');
+  assert.equal(h.values[5].voucher.code, 'CURRENT');assert.equal(h.values[6], '');
+});
+
+test('saved public offers are dimmed, noninteractive and end with the saved message', () => {
+  setup();
+  const tree = VoucherCard({ voucher: { ...code, walletId: 'wallet-a', state: 'held' }, catalog: true, onSave() {}, onChoose() {} });
+  assert.match(tree.props.className, /voucher-card--saved/);
+  assert.equal(tree.props['aria-disabled'], true);
+  assert.equal(nodes(tree).filter(node => ['button', 'a', 'input'].includes(node.type)).length, 0);
+  assert.equal(nodes(tree).at(-1).props.className, 'voucher-card__saved-note');
+  assert.equal(text(nodes(tree).at(-1)), 'Mã đã được lưu');
+});
+
+test('public catalog offers a save action while My vouchers retains use and unsave actions', () => {
+  setup();
+  const catalog = VoucherCard({ voucher: code, catalog: true, onSave() {} });
+  assert.equal(nodes(catalog).filter(node => node.type === 'button').length, 1);
+  assert.equal(text(nodes(catalog).find(node => node.type === 'button')), 'Lưu mã');
+  assert.equal(nodes(catalog).filter(node => node.type === 'a').length, 0);
+  const wallet = VoucherCard({ voucher: { ...code, walletId: 'saved-a' }, onSave() {} });
+  assert(nodes(wallet).some(node => node.props.to?.startsWith('/cart?voucher=')));
+  assert(nodes(wallet).some(node => node.type === 'button' && text(node) === 'Bỏ lưu'));
+  assert.equal(wallet.props['aria-disabled'], undefined);
+});
+
+test('successful save locks the offer immediately, blocks repeated saves, and survives reloading the catalog', async () => {
+  const h = setup([[code], false]), waiting = deferred();
+  h.request = async (name, args) => { h.calls.push({ name, args });return waiting.promise; };
+  let card = nodes(h.render(Vouchers, { mine: false })).find(node => node.type?.name === 'VoucherCard');
+  const operation = card.props.onSave(card.props.voucher);await card.props.onSave(card.props.voucher);
+  assert.equal(h.calls.length, 1);
+  waiting.resolve({ data: { message: 'Đã lưu mã' } });await operation;
+  card = nodes(h.render(Vouchers, { mine: false })).find(node => node.type?.name === 'VoucherCard');
+  assert(card.props.voucher.walletId);assert.equal(card.props.catalog, true);
+  assert.equal(nodes(VoucherCard(card.props)).filter(node => node.type === 'button' || node.type === 'a').length, 0);
+  await card.props.onSave(card.props.voucher);assert.equal(h.calls.length, 1);
+  const reload = setup();reload.request = async name => ({ data: name === 'getActiveVouchers' ? [code] : [{ ...code, walletId: 'persisted-wallet' }] });
+  reload.render(Vouchers, { mine: false });reload.flush();await settle();
+  assert.equal(reload.values[0][0].walletId, 'persisted-wallet');
+});
+
+test('a failed save keeps the card available and wallet loading failure never pretends no codes are saved', async () => {
+  const h = setup([[code], false]);
+  h.request = async () => { throw { response: { data: { message: 'Không lưu được' } } }; };
+  const card = nodes(h.render(Vouchers, { mine: false })).find(node => node.type?.name === 'VoucherCard');
+  await card.props.onSave(card.props.voucher);
+  assert.equal(h.values[0][0].walletId, undefined);assert.match(h.values[2], /Không lưu được/);
+  const reload = setup();reload.request = async name => { if (name === 'getMyVouchers') throw Error('wallet unavailable');return { data: [code] }; };
+  reload.render(Vouchers, { mine: false });reload.flush();await settle();
+  assert.deepEqual(reload.values[0], []);assert.match(reload.values[2], /Chưa tải được ưu đãi/);
+});
+
+test('checkout selector displays only wallet entries and explains an empty wallet', async () => {
+  const h = setup();h.request = async () => ({ data: [{ ...code, eligible: true }, { ...code, _id: 'saved', walletId: 'wallet-a', eligible: true }] });
+  h.render(VoucherSelector, { userId: 'a', subtotal: 500000 });h.flush();await settle();
+  const tree = h.render(VoucherSelector, { userId: 'a', subtotal: 500000 });
+  assert.equal(h.values[0].length, 1);assert.equal(h.values[0][0]._id, 'saved');
+  assert.match(text(tree), /Chọn từ Mã của tôi/);
+  const empty = setup([[], false]);
+  assert.match(text(empty.render(VoucherSelector, { userId: 'a', subtotal: 500000 })), /Vào Kho ưu đãi để lưu mã/);
+});
+
+test('checkout has no manual code input and a rejected unsaved URL code cannot set the quote', async () => {
+  const cart = [{ _id: 'cart', product: { _id: 'shoe', price: 500000 }, quantity: 1 }];
+  const h = setup([cart, false, false, 2, '', null, '', false, null, {}, 'COD']);
+  h.location.search = '?voucher=UNSAVED';
+  h.request = async (name, args) => {
+    h.calls.push({ name, args });
+    if (name === 'getCart') return { data: cart };
+    throw { response: { status: 403, data: { message: 'Mã chưa có trong Mã của tôi' } } };
+  };
+  const tree = h.render(Checkout);
+  assert.equal(nodes(tree).filter(node => node.type === 'input' && node.props['aria-label'] === 'Mã voucher').length, 0);
+  h.flush();await settle();
+  assert.deepEqual(h.calls.find(call => call.name === 'applyVoucher').args, ['UNSAVED', 500000]);
+  assert.equal(h.values[5], null);assert.match(h.values[6], /Mã của tôi/);
 });

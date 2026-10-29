@@ -37,10 +37,12 @@ test('real MongoDB product sales, cart prices, voucher stacking and price snapsh
 
   await t.test('voucher minimums and percentage savings use the already discounted merchandise subtotal', async () => {
     const voucherBody = { description: 'Discount fixture voucher', type: 'percent', discount: 10, perCustomerLimit: 1, maxUses: 10, startDate: new Date(Date.now() - 60000), endDate: new Date(Date.now() + 86400000) };
-    checked(await ctx.request('POST', '/api/vouchers/create', { token: adminToken, body: { ...voucherBody, code: 'TOOHIGH', minOrder: 1700000 } }), 201);
+    const minimumVoucher = checked(await ctx.request('POST', '/api/vouchers/create', { token: adminToken, body: { ...voucherBody, code: 'TOOHIGH', minOrder: 1700000 } }), 201);
+    checked(await ctx.request('POST', `/api/vouchers/${minimumVoucher._id}/save`, { token: buyerToken }), 200);
     checked(await place({ voucherCode: 'TOOHIGH', expectedTotalPrice: 1470000 }), 400);
     assert.equal((await Product.findById(product._id)).countInStock, 10);
-    checked(await ctx.request('POST', '/api/vouchers/create', { token: adminToken, body: { ...voucherBody, code: 'SALE10', minOrder: 1000000 } }), 201);
+    const saleVoucher = checked(await ctx.request('POST', '/api/vouchers/create', { token: adminToken, body: { ...voucherBody, code: 'SALE10', minOrder: 1000000 } }), 201);
+    checked(await ctx.request('POST', `/api/vouchers/${saleVoucher._id}/save`, { token: buyerToken }), 200);
     order = checked(await place({ voucherCode: 'SALE10', expectedTotalPrice: 1470000, discountPercent: 100, price: 1 }), 201);
     assert.equal(order.itemsPrice, 1600000);
     assert.equal(order.discountAmount, 160000);

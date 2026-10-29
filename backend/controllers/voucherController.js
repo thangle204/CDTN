@@ -208,10 +208,8 @@ const customerCard = async (voucher, user, total, wallet) => {
 export const getCustomerVouchers = async (req, res) => {
   const total = req.query.orderTotal === undefined ? null : nonNegativeInteger(Number(req.query.orderTotal), 'Tiền hàng');
   const wallets = await VoucherWallet.find({ user: req.user._id });
-  const vouchers = await Voucher.find({ $or: [
-    { _id: { $in: wallets.map(wallet => wallet.voucher) } },
-    ...(req.path === '/available' ? [{ visibility: { $ne: 'private' }, isActive: true, endDate: { $gte: new Date() } }] : []),
-  ] });
+  // Both the wallet and checkout show only this customer's saved/granted codes.
+  const vouchers = await Voucher.find({ _id: { $in: wallets.map(wallet => wallet.voucher) } });
   const cards = await Promise.all(vouchers.map(voucher => customerCard(voucher, req.user._id, total ?? Math.max(1, voucher.minOrder || 0), wallets.find(wallet => String(wallet.voucher) === String(voucher._id)))));
   if (total === null) for (const card of cards) { delete card.pricing; delete card.savings; }
   cards.sort((a, b) => Number(b.eligible) - Number(a.eligible) || (b.savings || 0) - (a.savings || 0) || new Date(a.endDate) - new Date(b.endDate));

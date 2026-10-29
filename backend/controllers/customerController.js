@@ -12,12 +12,14 @@ import { getProductVariant, variantKey } from '../utils/productVariants.js';
 import { withAdminRoleGuard } from '../utils/adminGuard.js';
 import { NON_SALES_STATUSES } from '../utils/orderPricing.js';
 import { productSalePrice } from '../../shared/productPricing.js';
+import { normalizeSavedShippingAddress } from '../utils/shippingAddress.js';
 
 const profileOf = (customer) => ({
   _id: customer._id,
   name: customer.name,
   email: customer.email,
   phone: customer.phone,
+  ...(customer.shippingAddress ? { shippingAddress: customer.shippingAddress } : {}),
   isAdmin: customer.isAdmin,
   isActive: customer.isActive,
 });
@@ -64,6 +66,24 @@ export const getCustomerProfile = async (req, res) => {
 export const updateUserProfile = async (req, res) => {
   const customer = await Customer.findById(req.user._id);
   if (!customer) throw httpError(404, 'Không tìm thấy khách hàng');
+  if ((customer.authVersion ?? 0) !== (req.user.authVersion ?? 0)) throw httpError(401, 'Phiên đăng nhập đã thay đổi. Vui lòng đăng nhập lại');
+  if (req.body.onlyIfAddressMissing !== undefined && typeof req.body.onlyIfAddressMissing !== 'boolean') throw httpError(400, 'Yêu cầu lưu địa chỉ không hợp lệ');
+  if (req.body.onlyIfAddressMissing === true) {
+    if (Object.keys(req.body).some(key => !['shippingAddress', 'onlyIfAddressMissing'].includes(key))) throw httpError(400, 'Yêu cầu lưu địa chỉ đầu tiên chỉ được chứa thông tin giao hàng');
+    const shippingAddress = normalizeSavedShippingAddress(req.body.shippingAddress);
+    if (customer.shippingAddress) throw httpError(409, 'Tài khoản đã có địa chỉ giao hàng. Vui lòng tải lại trang để sử dụng địa chỉ đã lưu hoặc chọn đổi riêng cho đơn này');
+    // Competing tabs may both see an empty account. Only the first write wins;
+    // never turn a one-order address into an overwrite of an existing default.
+    const updated = await Customer.findOneAndUpdate({
+      _id: customer._id, isActive: { $ne: false },
+      authVersion: req.user.authVersion || { $in: [0, null] },
+      __v: Number.isSafeInteger(customer.__v) ? customer.__v : { $exists: false },
+      $or: [{ shippingAddress: { $exists: false } }, { shippingAddress: null }],
+    }, { $set: { shippingAddress }, $inc: { __v: 1 } }, { new: true, runValidators: true });
+    if (!updated) throw httpError(409, 'Thông tin tài khoản vừa thay đổi. Vui lòng tải lại trang và kiểm tra địa chỉ đã lưu');
+    return res.json({ ...profileOf(updated), token: tokenFor(updated) });
+  }
+  if (req.body.shippingAddress !== undefined) customer.shippingAddress = req.body.shippingAddress === null ? undefined : normalizeSavedShippingAddress(req.body.shippingAddress);
   if (req.body.name !== undefined) customer.name = cleanText(req.body.name, 'Họ tên', { max: 100 });
   if (req.body.phone !== undefined) customer.phone = normalizePhone(req.body.phone);
   if (req.body.newPassword !== undefined && req.body.newPassword !== '') {

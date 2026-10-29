@@ -13,6 +13,7 @@ import Product from '../models/productModel.js';
 import AdminGuard from '../models/adminGuardModel.js';
 import { assertCartStock, assertCartUnlocked, findCartItem } from '../utils/cart.js';
 import { normalizeEmail, normalizePhone, normalizeSize, positiveQuantity, validatePassword } from '../utils/validation.js';
+import { normalizeSavedShippingAddress } from '../utils/shippingAddress.js';
 
 // Every database/email operation in these tests is replaced with a local stub.
 const secret = 'customer-api-test-secret-only';
@@ -47,6 +48,7 @@ const installUser = (t, user = sessionUser(), Model = Customer) => {
   return user;
 };
 const assertBadRequest = (callback) => assert.throws(callback, error => error.status === 400);
+const savedAddress = { name: 'Người nhận', phone: '0901234567', address: '10 Nguyễn Huệ', city: 'TP. Hồ Chí Minh', district: 'Quận 1', ward: 'Bến Nghé' };
 
 before(async () => {
   process.env.JWT_SECRET = secret;
@@ -251,6 +253,51 @@ test('profile password changes require the current password and return a token w
   assert.equal('password' in changed.body, false);
   assert.equal((await request('/api/customers/profile', { authorization: token() })).status, 401);
   assert.equal((await request('/api/customers/profile', { authorization: changed.body.token })).status, 200);
+});
+
+test('saved shipping addresses validate required fields, trim text and omit per-order notes', async () => {
+  assert.deepEqual(normalizeSavedShippingAddress({ ...savedAddress, address: ' 10 Nguyễn Huệ ', notes: 'Only for this order', isAdmin: true }), savedAddress);
+  assert.equal(normalizeSavedShippingAddress({ ...savedAddress, ward: undefined, district: undefined }).ward, '');
+  for (const address of [null, [], '', { ...savedAddress, name: '' }, { ...savedAddress, phone: '12345' }, { ...savedAddress, address: '' }, { ...savedAddress, city: [] }, { ...savedAddress, ward: 'x'.repeat(121) }]) {
+    assertBadRequest(() => normalizeSavedShippingAddress(address));
+  }
+  await new Customer({ ...sessionUser(), password: 'test-password' }).validate();
+  await assert.rejects(new Customer({ ...sessionUser(), password: 'test-password', shippingAddress: { address: 'Incomplete' } }).validate(), { name: 'ValidationError' });
+});
+
+test('authenticated profile edits persist the default address and expose it in profile/login responses only', async t => {
+  const customer = new Customer({ ...sessionUser(), password: 'hashed-test-password', __v: 0 });
+  installUser(t, customer);
+  t.mock.method(customer, 'save', async () => { await customer.validate();return customer; });
+  const result = await request('/api/customers/profile', { method: 'PUT', authorization: token(), body: { shippingAddress: { ...savedAddress, notes: 'Do not save notes' }, isAdmin: true } });
+  assert.equal(result.status, 200);assert.deepEqual(result.body.shippingAddress, savedAddress);
+  assert.equal(result.body.isAdmin, false);assert.equal(result.body.password, undefined);
+  assert.deepEqual((await request('/api/customers/profile', { authorization: token() })).body.shippingAddress, savedAddress);
+  const before = customer.shippingAddress.toObject();
+  const invalid = await request('/api/customers/profile', { method: 'PUT', authorization: token(), body: { shippingAddress: { ...savedAddress, phone: '123' } } });
+  assert.equal(invalid.status, 400);assert.deepEqual(customer.shippingAddress.toObject(), before);
+  assert.equal((await request('/api/customers/profile', { method: 'PUT', body: { shippingAddress: savedAddress } })).status, 401);
+});
+
+test('checkout first-address saves are conditional and never overwrite an existing or concurrently edited default', async t => {
+  const customer = new Customer({ ...sessionUser(), password: 'hashed-test-password', __v: 4 });
+  installUser(t, customer);
+  let written = false;
+  const atomic = t.mock.method(Customer, 'findOneAndUpdate', async (filter, update, options) => {
+    assert.equal(filter.__v, 4);assert.deepEqual(filter.$or, [{ shippingAddress: { $exists: false } }, { shippingAddress: null }]);
+    assert.deepEqual(update.$set.shippingAddress, savedAddress);assert.equal(update.$inc.__v, 1);assert.equal(options.runValidators, true);
+    if (written) return null;
+    written = true;return new Customer({ ...customer.toObject(), shippingAddress: savedAddress, __v: 5 });
+  });
+  const body = { shippingAddress: savedAddress, onlyIfAddressMissing: true };
+  const initial = await request('/api/customers/profile', { method: 'PUT', authorization: token(), body });
+  assert.equal(initial.status, 200);assert.deepEqual(initial.body.shippingAddress, savedAddress);
+  const raced = await request('/api/customers/profile', { method: 'PUT', authorization: token(), body });
+  assert.equal(raced.status, 409);
+  customer.shippingAddress = savedAddress;
+  assert.equal((await request('/api/customers/profile', { method: 'PUT', authorization: token(), body })).status, 409);
+  assert.equal(atomic.mock.callCount(), 2);
+  assert.equal((await request('/api/customers/profile', { method: 'PUT', authorization: token(), body: { ...body, onlyIfAddressMissing: 'true' } })).status, 400);
 });
 
 test('forgot-password without SMTP returns unavailable instead of pretending an email was sent', async (t) => {

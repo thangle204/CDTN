@@ -5,6 +5,7 @@ import Customer from '../models/customerModel.js';
 import Product from '../models/productModel.js';
 import Order from '../models/orderModel.js';
 import Voucher from '../models/voucherModel.js';
+import VoucherWallet from '../models/voucherWalletModel.js';
 import { addOrderItems, cancelOrder, confirmOrderRefund, deleteOrder, getOrders, updatePaymentStatus } from '../controllers/orderController.js';
 import { calculateOrderPricing, validateVoucherEligibility, validateOrderTransition } from '../utils/orderPricing.js';
 import { checkoutCartKey } from '../utils/checkoutCart.js';
@@ -83,6 +84,7 @@ const mockCheckout = (t, products, carts, options = {}) => {
     return { matchedCount: 1 };
   });
   t.mock.method(Voucher, 'findOne', async () => voucher || null);
+  t.mock.method(VoucherWallet, 'findOne', async filter => voucher ? { _id: id(), voucher: voucher._id, user: filter.user, kind: 'saved' } : null);
   t.mock.method(Voucher, 'findOneAndUpdate', async () => {
     if (!voucher || options.failVoucher || voucher.usedCount >= voucher.maxUses) return null;
     voucher.usedCount += 1;
@@ -388,6 +390,16 @@ test('Lưu đơn thất bại: hoàn kho và trả lượt voucher đã giữ', 
   assert.equal(res.statusCode, 500);
   assert.equal(item.countInStock, 5);
   assert.equal(voucher.usedCount, 0);
+});
+
+test('a public voucher missing from My vouchers is rejected before checkout reserves stock or usage', async t => {
+  const item = product(), customerId = id();
+  const voucher = { _id: id(), code: 'SAVE10', type: 'percent', discount: 10, isActive: true, usedCount: 0, maxUses: 5, minOrder: 0, startDate: new Date(Date.now() - 86400000), endDate: new Date(Date.now() + 86400000) };
+  const { saved, stockCalls } = mockCheckout(t, [item], [{ _id: customerId, cart: [cartItem(item)] }], { voucher });
+  t.mock.method(VoucherWallet, 'findOne', async () => null);
+  const res = response();await addOrderItems(checkoutRequest(customerId, { voucherCode: voucher.code }), res);
+  assert.equal(res.statusCode, 403);assert.match(res.body.message, /Mã của tôi/);
+  assert.equal(saved.length, 0);assert.equal(stockCalls.length, 0);assert.equal(voucher.usedCount, 0);assert.equal(item.countInStock, 5);
 });
 
 test('Bù kho lỗi: khóa đối soát không tự hết hạn rồi cho tạo đơn khác', async (t) => {

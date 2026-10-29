@@ -54,6 +54,7 @@ test('first purchase eligibility blocks delivered orders and other pending or pa
 
 test('personal limits count both tracked reservations and legacy unreleased orders', async t => {
   const user = id(), voucher = fixture({ perCustomerLimit: 2, reservations: [{ user, token: 'held', order: id() }] });
+  t.mock.method(Wallet, 'findOne', async () => ({ _id: id(), kind: 'saved' }));
   t.mock.method(Order, 'countDocuments', async filter => { assert.deepEqual(filter['voucher.reservationToken'], { $exists: false });return 1; });
   await assert.rejects(checkVoucherCustomer(voucher, user, 500000), error => error.status === 400);
 });
@@ -163,10 +164,36 @@ test('after-purchase gifts require a paid delivered order in the campaign and pr
 
 test('wallet cards scope grants to the authenticated owner and recommend lowest total including shipping', async t => {
   const user = id(), fixed = fixture({ code: 'SAVE20', type: 'fixed', discount: 20000 }), shipping = fixture({ code: 'SHIP', type: 'shipping', discount: 30000 });
-  t.mock.method(Wallet, 'find', async filter => { assert.equal(filter.user, user);return []; });
-  t.mock.method(Voucher, 'find', async filter => { assert.deepEqual(filter.$or[0]._id.$in, []);assert.deepEqual(filter.$or[1].visibility, { $ne: 'private' });return [fixed, shipping]; });
+  const wallets = [fixed, shipping].map(voucher => ({ _id: id(), user, voucher: voucher._id, kind: 'saved' }));
+  t.mock.method(Wallet, 'find', async filter => { assert.equal(filter.user, user);return wallets; });
+  t.mock.method(Wallet, 'findOne', async filter => wallets.find(wallet => String(wallet.voucher) === String(filter.voucher)));
+  t.mock.method(Order, 'countDocuments', async () => 0);
+  t.mock.method(Voucher, 'find', async filter => { assert.deepEqual(filter, { _id: { $in: wallets.map(wallet => wallet.voucher) } });return [fixed, shipping]; });
   const res = response();await getCustomerVouchers({ user: { _id: user }, query: { orderTotal: '500000' }, path: '/available' }, res);
   assert.equal(res.body[0].code, 'SHIP');assert.equal(res.body[0].savings, 30000);assert.equal(res.body[1].savings, 20000);
+  assert(res.body.every(card => card.walletId));
+});
+
+test('public codes require an owned saved entry even when there is no per-customer limit', async t => {
+  const voucher = fixture(), user = id(), stranger = id();let saved = false;
+  t.mock.method(Wallet, 'findOne', async filter => {
+    assert.equal(String(filter.voucher), String(voucher._id));assert.equal(filter.kind, 'saved');
+    return saved && String(filter.user) === String(user) ? { _id: id(), kind: 'saved' } : null;
+  });
+  await assert.rejects(checkVoucherCustomer(voucher, undefined, 500000), { status: 401 });
+  await assert.rejects(checkVoucherCustomer(voucher, user, 500000), error => error.status === 403 && /Mã của tôi/.test(error.message));
+  saved = true;
+  assert((await checkVoucherCustomer(voucher, user, 500000)).wallet);
+  await assert.rejects(checkVoucherCustomer(voucher, stranger, 500000), { status: 403 });
+  saved = false;
+  await assert.rejects(checkVoucherCustomer(voucher, user, 500000), { status: 403 });
+});
+
+test('checkout recommendations are empty when the customer has no wallet, even if public offers exist', async t => {
+  t.mock.method(Wallet, 'find', async () => []);
+  t.mock.method(Voucher, 'find', async filter => { assert.deepEqual(filter, { _id: { $in: [] } });return []; });
+  const res = response();await getCustomerVouchers({ user: { _id: id() }, query: { orderTotal: '500000' }, path: '/available' }, res);
+  assert.deepEqual(res.body, []);
 });
 
 test('issued coupons and in-progress release holds cannot be deleted', async t => {

@@ -24,13 +24,16 @@ export const customerUsage = async (voucher, user) => {
 export const checkVoucherCustomer = async (voucher, user, itemsPrice, now = new Date()) => {
   validateVoucherEligibility(voucher, itemsPrice, now);
   const rule = voucherEligibility(voucher);
-  if ((rule !== 'all' || voucherVisibility(voucher) === 'private' || voucher.perCustomerLimit) && !user) throw httpError(401, 'Đăng nhập để sử dụng ưu đãi này');
+  if (!user) throw httpError(401, 'Đăng nhập để sử dụng mã trong Mã của tôi');
   if (rule === 'first_order' && !await firstOrderEligible(user)) throw httpError(400, 'Ưu đãi dành cho khách chưa có đơn giao thành công và không có đơn khác đang xử lý');
-  let wallet;
-  if (voucherVisibility(voucher) === 'private') {
-    wallet = await VoucherWallet.findOne({ voucher: voucher._id, user, kind: 'granted' });
+  const privateCode = voucherVisibility(voucher) === 'private';
+  const wallet = await VoucherWallet.findOne({ voucher: voucher._id, user, kind: privateCode ? 'granted' : 'saved' });
+  if (privateCode) {
     if (!wallet) throw httpError(403, 'Mã riêng chưa được cấp cho tài khoản của bạn. Mở Mã của tôi để nhận ưu đãi đủ điều kiện');
     if (!wallet.expiresAt || new Date(wallet.expiresAt) < now) throw httpError(400, 'Mã riêng trong tài khoản đã hết hạn');
+  } else {
+    if (!wallet) throw httpError(403, 'Mã chưa có trong Mã của tôi. Vui lòng lưu mã tại Kho ưu đãi trước khi thanh toán');
+    if (wallet.expiresAt && new Date(wallet.expiresAt) < now) throw httpError(400, 'Mã đã lưu trong tài khoản đã hết hạn');
   }
   let legacyCount = 0;
   if (voucher.perCustomerLimit) {

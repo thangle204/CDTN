@@ -21,6 +21,17 @@ const customerSchema = mongoose.Schema(
     email: { type: String, required: true, unique: true, trim: true, lowercase: true, maxlength: 254 },
     name: { type: String, required: false, trim: true, maxlength: 100 },
     phone: { type: String, required: false, trim: true, validate: { validator: (value) => !value || /^0\d{9}$/.test(value), message: 'Số điện thoại phải có 10 số và bắt đầu bằng 0' } },
+    shippingAddress: {
+      type: new mongoose.Schema({
+        name: { type: String, required: true, trim: true, maxlength: 120 },
+        phone: { type: String, required: true, match: /^0\d{9}$/ },
+        address: { type: String, required: true, trim: true, maxlength: 500 },
+        city: { type: String, required: true, trim: true, maxlength: 120 },
+        district: { type: String, trim: true, maxlength: 120, default: '' },
+        ward: { type: String, trim: true, maxlength: 120, default: '' },
+      }, { _id: false }),
+      default: undefined,
+    },
     password: { type: String, required: true },
     isAdmin: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },

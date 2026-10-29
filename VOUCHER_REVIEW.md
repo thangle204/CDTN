@@ -10,13 +10,13 @@ Trước khi sửa: 8 kiểm tra sẵn có về voucher/giá đơn đạt nhưng
 
 | Phần | Hành vi hiện tại |
 | --- | --- |
-| Kho ưu đãi `/offers` | Chỉ công khai mã thuộc kênh công khai, đang hiệu lực và còn lượt; thể hiện mức giảm, trần, điều kiện, hạn dùng, lưu/bỏ lưu và Dùng ngay. |
+| Kho ưu đãi `/offers` | Chỉ công khai mã thuộc kênh công khai, đang hiệu lực và còn lượt. Mã chưa lưu có nút Lưu mã; lưu thành công thì thẻ mờ, không còn thao tác và cuối thẻ hiện “Mã đã được lưu”. Trạng thái giữ sau khi tải lại. |
 | Mã của tôi `/my-vouchers` | Mã công khai đã lưu và mã riêng đúng chủ tài khoản; phân biệt có thể dùng, đang được đơn giữ, đã hết lượt hoặc hết hạn. Mã riêng không bị lộ qua kho công khai. |
-| Lưu mã | Chỉ tạo dấu lưu trong tài khoản, không giữ hoặc trừ lượt và không gia hạn. Dùng mã công khai không bắt buộc lưu. |
+| Lưu mã | Phải lưu mã công khai vào Mã của tôi trước khi dùng. Lưu không giữ/trừ lượt và không gia hạn. Khách chỉ dùng/bỏ lưu mã tại Mã của tôi; bỏ lưu sẽ mất quyền dùng mã ở checkout cho các đơn đặt sau đó. Mã riêng được cấp đủ điều kiện đã nằm trong Mã của tôi. |
 | Mã riêng | Cấp một quyền nhận mã mỗi khách mỗi chương trình khi đủ điều kiện. Có nguồn cấp và hạn sử dụng; nhiều callback hoặc nhận lại không cấp trùng/đẩy hạn. Số lần dùng theo hạn mức chương trình. |
 | Lần mua đầu | Chưa có đơn giao thành công và không có đơn khác đang xử lý, giữ ưu đãi, hủy chưa hoàn tất hoặc giao thất bại đang chờ xử lý. Đơn đã hủy/hoàn hàng xử lý xong không chặn lần mua đầu. Một lượt mỗi khách. |
 | Quà sau mua | Cấp sau đơn đã giao và đã thanh toán, có thời điểm giao trong kỳ chương trình. Nếu bước cấp quà gặp lỗi, vào Mã của tôi sẽ thử nhận lại; không ảnh hưởng đơn đã giao. |
-| Checkout | Gợi ý mã có tổng phải trả thấp nhất, tính cả ship; phân biệt mã chưa đủ điều kiện và lý do. Một mã mỗi đơn, không tự thay mã khách đã chọn. Dùng ngay giữ mã qua URL giỏ → checkout để kiểm tra/áp dụng. |
+| Checkout | Chỉ tải và chọn mã đã lưu/được cấp trong Mã của tôi, không có ô nhập mã tự do. Gợi ý mã tiết kiệm nhất trong số mã sở hữu, tính cả ship; hiển thị lý do chưa dùng được. Một mã mỗi đơn. Dùng ngay từ Mã của tôi giữ mã qua URL giỏ → checkout; cả preview và tạo đơn đều kiểm quyền sở hữu ở backend, mã chưa lưu nhận 403 trước khi giữ kho/lượt. |
 | Giới hạn | Có tổng lượt, lượt mỗi khách và trần tiền cho giảm phần trăm. Backend kiểm tra quyền/điều kiện khi xem trước và đặt hàng; giữ lượt nguyên tử, gắn với đơn và khách. |
 | Quản trị | Giờ Việt Nam UTC+7, giữ nguyên thời điểm gốc nếu không sửa. Chỉ gửi trường thay đổi và phiên bản; dữ liệu cũ nhận 409. Ngừng áp dụng khác với kênh công khai/riêng. |
 | Mã đã phát hành | Không đổi code; đã được lưu/cấp hoặc dùng thì giữ quyền lợi/đối tượng ổn định, tạo chương trình mới để đổi. Vẫn có thể sửa mô tả, lịch hiệu lực, hạn mức tổng phù hợp và trạng thái bằng phiên bản mới. |
@@ -44,9 +44,9 @@ Không cần chuyển đổi/seed dữ liệu cũ. Khóa hủy tồn từ phiên
 
 ### Kết quả kiểm tra sau sửa
 
-- **381 kiểm tra backend, 201 frontend đạt** (21 luồng và 180 ca Node); build thành công.
-- **7 ca nghiệp vụ HTTP + MongoDB thật** trong `backend/integration/vouchers.integration.test.js` đạt (Node tính 8 mục gồm nhóm cha). Chạy trong database thử nghiệm sinh ngẫu nhiên, có dấu sở hữu, đã dọn đúng database đó; không sửa dữ liệu cửa hàng. Gồm mã riêng/quyền sở hữu, lưu không trừ lượt, hạn mỗi khách, tranh lượt cuối, phiên bản/lịch, quà sau giao và hai worker tự hủy cùng đơn chưa mở thanh toán.
-- **13 trường hợp Chrome** ở 1440px, 390px và 320px đạt; chặn mọi API, mô phỏng 14 thao tác ghi trong bộ nhớ. Có xem/lưu/bỏ lưu, mã riêng, lý do không dùng được, truyền mã qua giỏ, áp dụng/tổng tiền, form quản trị và sửa mô tả giữ lịch. Kết quả/ảnh ở `.tmp/voucher-implementation/`.
+- Cập nhật quy tắc chỉ dùng mã trong Mã của tôi ngày **29/10/2026**: **391 backend, 213 frontend đạt** (21 luồng và 192 ca Node); build thành công.
+- **22 ca nghiệp vụ HTTP + MongoDB thật** đạt trong ba nhóm đơn hàng, giảm giá sản phẩm và voucher (Node tính 25 mục gồm nhóm cha). Các database thử sinh ngẫu nhiên, có dấu sở hữu, đã được dọn; không sửa dữ liệu cửa hàng. Riêng voucher có **8 ca**, gồm chặn preview/đặt đơn khi chưa lưu, quyền đúng tài khoản, lưu lặp không trùng, bỏ lưu thu hồi quyền dùng cho đơn mới, hạn mỗi khách, tranh lượt cuối, phiên bản/lịch, quà sau giao và worker trả kho/lượt một lần.
+- **17 trường hợp Chrome** ở 1440px, 390px và 320px đạt; chặn mọi API, xử lý 20 thao tác ghi trong bộ nhớ. Kiểm tra lưu làm mờ/khóa thẻ ngay, dòng “Mã đã được lưu” ở cuối, tải lại giữ trạng thái, checkout không có ô nhập mã và chỉ hiện mã sở hữu, dùng/bỏ lưu tại Mã của tôi, lưu thất bại không khóa thẻ và URL chứa mã chưa lưu bị từ chối. Kết quả/ảnh ở `.tmp/voucher-wallet-only/`; các kiểm tra triển khai trước ở `.tmp/voucher-implementation/` được giữ làm lịch sử.
 - Các trạng thái QueryDR, chữ ký, lỗi mạng, thanh toán đến khi đối soát và deadline được kiểm tra ngoại tuyến. Đợt này không tạo giao dịch VNPAY Sandbox thật mới; kiểm tra MongoDB tự hủy dùng đơn thử chưa có link thanh toán.
 
 ## Lịch sử hiện trạng và điểm cần điều chỉnh trước sửa

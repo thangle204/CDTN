@@ -8,6 +8,7 @@ import Customer from '../models/customerModel.js';
 import Product from '../models/productModel.js';
 import Voucher from '../models/voucherModel.js';
 import Order from '../models/orderModel.js';
+import VoucherWallet from '../models/voucherWalletModel.js';
 
 const secret = 'catalog-api-test-secret-only';
 const customerId = '000000000000000000000011';
@@ -494,14 +495,19 @@ test('voucher preview checks start/end/usage and free shipping; browser cannot c
   const now = Date.now();
   let voucher = { ...voucherFields, isActive: true, type: 'shipping', discount: 30000, startDate: new Date(now - 60000), endDate: new Date(now + 60000) };
   t.mock.method(Voucher, 'findOne', async () => voucher);
-  const preview = await request('/api/vouchers/apply', { method: 'POST', body: { code: 'TEST10', orderTotal: 200000 } });
+  let wallet = null;
+  t.mock.method(VoucherWallet, 'findOne', async filter => { assert.equal(String(filter.user), customerId);return wallet; });
+  assert.equal((await request('/api/vouchers/apply', { method: 'POST', body: { code: 'TEST10', orderTotal: 200000 } })).status, 401);
+  assert.equal((await request('/api/vouchers/apply', { method: 'POST', auth: true, body: { code: 'TEST10', orderTotal: 200000 } })).status, 403);
+  wallet = { _id: voucherId, kind: 'saved' };
+  const preview = await request('/api/vouchers/apply', { method: 'POST', auth: true, body: { code: 'TEST10', orderTotal: 200000 } });
   assert.equal(preview.status, 200);
   assert.equal(preview.body.shippingPrice, 0);
   assert.equal(preview.body.totalPrice, 200000);
   for (const override of [{ isActive: false }, { startDate: new Date(now + 60000) }, { endDate: new Date(now - 60000) }, { usedCount: 5 }]) {
     const previous = voucher;
     voucher = { ...voucher, ...override };
-    assert.equal((await request('/api/vouchers/apply', { method: 'POST', body: { code: 'TEST10', orderTotal: 200000 } })).status, 400);
+    assert.equal((await request('/api/vouchers/apply', { method: 'POST', auth: true, body: { code: 'TEST10', orderTotal: 200000 } })).status, 400);
     voucher = previous;
   }
   assert.equal((await request(`/api/vouchers/${voucherId}/use`, { method: 'PUT', auth: true, body: {} })).status, 409);

@@ -24,6 +24,7 @@ test('real MongoDB voucher ownership, limits, release receipts and payment expir
     return ctx.request('POST', '/api/orders', { token, body: { shippingAddress, paymentMethod: 'COD', expectedCart: cart, voucherCode: code } });
   };
   const cancel = (token, order) => ctx.request('PUT', `/api/orders/${order._id}/cancel`, { token });
+  const save = async (token, voucher) => checked(await ctx.request('POST', `/api/vouchers/${voucher._id}/save`, { token }), 200);
 
   await t.test('public save does not consume uses and issued programs resist economic rewrites/deletion', async () => {
     const voucher = await campaign('PUBLIC10'), buyer = await customer();
@@ -53,7 +54,7 @@ test('real MongoDB voucher ownership, limits, release receipts and payment expir
   });
 
   await t.test('per-customer limits and cancellation releases are enforced by real Mongo expressions', async () => {
-    const voucher = await campaign('PEROWNER'), buyer = await customer();await putInCart(buyer.token);
+    const voucher = await campaign('PEROWNER'), buyer = await customer();await save(buyer.token, voucher);await putInCart(buyer.token);
     const first = checked(await place(buyer.token, voucher.code), 201);await putInCart(buyer.token);
     checked(await place(buyer.token, voucher.code), 400);
     const cards = checked(await ctx.request('GET', '/api/vouchers/available?orderTotal=500000', { token: buyer.token }), 200);
@@ -64,6 +65,7 @@ test('real MongoDB voucher ownership, limits, release receipts and payment expir
 
   await t.test('independent checkouts competing for the last code use commit at most one discounted order', async () => {
     const voucher = await campaign('LASTUSE', { maxUses: 1 }), a = await customer(), b = await customer(), secondShoe = await ctx.createProduct({ price: 500000 });
+    await save(a.token, voucher);await save(b.token, voucher);
     await putInCart(a.token);await putInCart(b.token, secondShoe);
     const responses = await Promise.all([place(a.token, voucher.code), place(b.token, voucher.code)]);
     assert.equal(responses.filter(res => res.status === 201).length, 1);assert(responses.every(res => [201, 400, 409].includes(res.status)));
@@ -91,6 +93,7 @@ test('real MongoDB voucher ownership, limits, release receipts and payment expir
 
   await t.test('simultaneous expiry sweeps cancel a never-opened VNPAY order and release stock/code once', async () => {
     const voucher = await campaign('EXPIRE'), buyer = await customer(), shoe = await ctx.createProduct({ price: 500000 });await putInCart(buyer.token, shoe);
+    await save(buyer.token, voucher);
     const order = checked(await place(buyer.token, voucher.code), 201);
     await Order.updateOne({ _id: order._id }, { $set: { paymentMethod: 'VNPAY', paymentDeadline: new Date(Date.now() - 1000), vnpayPayments: [] } });
     const sweep = createPaymentExpirySweep({ query: () => { throw Error('No link was issued; must not query gateway'); } });
@@ -99,5 +102,25 @@ test('real MongoDB voucher ownership, limits, release receipts and payment expir
     assert.equal(stored.orderStatus, 'Đã hủy');assert(stored.autoCancelledAt);assert.equal(stored.stockRestored, true);
     assert.equal(coupon.usedCount, 0);assert.equal(coupon.reservations.length, 0);assert.equal(inventory.countInStock, shoe.countInStock);
     assert.equal(inventory.cancellationReceipts.length, 1);
+  });
+
+  await t.test('only owned saved vouchers may be previewed or ordered and unsaving revokes future use', async () => {
+    const voucher = await campaign('WALLETONLY', { perCustomerLimit: null }), owner = await customer(), other = await customer();
+    const preview = token => ctx.request('POST', '/api/vouchers/apply', { token, body: { code: voucher.code, orderTotal: 500000 } });
+    await putInCart(owner.token);await putInCart(other.token);
+    const stockBefore = (await Product.findById(product._id)).countInStock;
+    assert(checked(await ctx.request('GET', '/api/vouchers'), 200).some(row => row.code === voucher.code));
+    assert.deepEqual(checked(await ctx.request('GET', '/api/vouchers/available?orderTotal=500000', { token: owner.token }), 200), []);
+    checked(await preview(undefined), 401);checked(await preview(owner.token), 403);checked(await place(owner.token, voucher.code), 403);
+    assert.equal((await Product.findById(product._id)).countInStock, stockBefore);assert.equal((await Voucher.findById(voucher._id)).usedCount, 0);
+    await save(owner.token, voucher);await save(owner.token, voucher);
+    assert.equal(await Wallet.countDocuments({ voucher: voucher._id, user: owner.user._id }), 1);
+    const cards = checked(await ctx.request('GET', '/api/vouchers/available?orderTotal=500000', { token: owner.token }), 200);
+    assert.equal(cards.length, 1);assert.equal(cards[0].code, voucher.code);assert(cards[0].walletId);
+    checked(await preview(owner.token), 200);checked(await preview(other.token), 403);checked(await place(other.token, voucher.code), 403);
+    const order = checked(await place(owner.token, voucher.code), 201);checked(await cancel(owner.token, order), 200);
+    checked(await ctx.request('DELETE', `/api/vouchers/${voucher._id}/save`, { token: owner.token }), 200);
+    checked(await preview(owner.token), 403);await putInCart(owner.token);checked(await place(owner.token, voucher.code), 403);
+    assert.deepEqual(checked(await ctx.request('GET', '/api/vouchers/available?orderTotal=500000', { token: owner.token }), 200), []);
   });
 });

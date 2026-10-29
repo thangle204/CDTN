@@ -13,8 +13,7 @@ router.get('/available', protect, customerOnly, getCustomerVouchers);
 router.post('/mine/refresh', protect, customerOnly, refreshCustomerVouchers);
 router.post('/:id/save', protect, customerOnly, saveVoucher);
 router.delete('/:id/save', protect, customerOnly, unsaveVoucher);
-router.post('/apply', (req, res, next) => req.headers.authorization ? protect(req, res, next) : next(),
-  (req, res, next) => req.user ? customerOnly(req, res, next) : next(), applyVoucher);
+router.post('/apply', protect, customerOnly, applyVoucher);
 router.get('/admin/all', protect, admin, getAllVouchersAdmin);
 router.post('/create', protect, admin, createVoucher);
 router.put('/:id', protect, admin, updateVoucher);

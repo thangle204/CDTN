@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FaShoppingBag, FaBoxOpen, FaSearch, FaBars, FaTimes, FaUser, FaArrowRight, FaCog } from 'react-icons/fa';
+import { FaShoppingBag, FaBoxOpen, FaSearch, FaBars, FaTimes, FaUser, FaArrowRight, FaCog, FaTicketAlt } from 'react-icons/fa';
 import './storefront-header.css';
 
 const categories = ['Sneaker', 'Giày chạy bộ', 'Giày da', 'Sandal', 'Giày thể thao'];
@@ -51,7 +51,6 @@ const Navbar = () => {
             {loading ? <span role="status">Đang tải tài khoản...</span> : user ? (
               <>
                 <span className="store-header__greeting">Xin chào, {user.name || user.email}</span>
-                <Link to="/my-vouchers">Mã của tôi</Link>
                 <button type="button" onClick={handleLogout}>Đăng xuất</button>
               </>
             ) : (
@@ -86,6 +85,7 @@ const Navbar = () => {
             </Link>
           )}
           {user && <Link to="/my-orders" className="store-header__action store-header__orders" aria-current={location.pathname === '/my-orders' ? 'page' : undefined}><FaBoxOpen aria-hidden="true" /><span>Đơn hàng</span></Link>}
+          {user && <Link to="/my-vouchers" className="store-header__action" aria-current={location.pathname === '/my-vouchers' ? 'page' : undefined}><FaTicketAlt aria-hidden="true" /><span>Mã của tôi</span></Link>}
           <Link to="/cart" className="store-header__action" aria-current={location.pathname === '/cart' ? 'page' : undefined}><FaShoppingBag aria-hidden="true" /><span>Giỏ hàng</span></Link>
           {user?.isAdmin && <Link to="/admin" className="store-header__action store-header__admin" aria-current={location.pathname === '/admin' ? 'page' : undefined}><FaCog aria-hidden="true" /><span>Quản trị</span></Link>}
           <button

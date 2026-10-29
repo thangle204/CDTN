@@ -22,9 +22,21 @@ Sản phẩm cũ chưa có `discountPercent` được hiểu là giảm 0%; sử
 
 Kiểm tra ngày **29/10/2026**: **388 backend**, **207 frontend** (186 ca Node và 21 luồng), build thành công; **5 tình huống HTTP/MongoDB thật** đạt trên cơ sở dữ liệu thử có kiểm tra quyền sở hữu và đã dọn. **15 kiểm tra Chrome** đạt ở 1440px, 390px và 320px bằng dữ liệu/API giả lập, gồm nhập/lưu mức giảm và giá tại catalog, chi tiết, giỏ hàng, checkout. Không chỉnh giá, kho hay chương trình ưu đãi của dữ liệu cửa hàng trong quá trình kiểm tra.
 
+## Địa chỉ giao hàng trong tài khoản
+
+Vào **Tài khoản → Chỉnh sửa thông tin → Địa chỉ giao hàng mặc định**, nhập người nhận, số điện thoại nhận hàng, số nhà/tên đường và tỉnh/thành phố; quận/huyện, phường/xã là tùy chọn. Bấm **Lưu thay đổi** để lưu địa chỉ vào tài khoản. Thông tin người nhận có thể khác tên và số điện thoại của tài khoản.
+
+Checkout tự dùng địa chỉ mặc định và hỏi **Bạn có muốn thay đổi thông tin giao hàng không?** Chọn **Không** để dùng thông tin đã lưu; chọn **Có, đổi cho đơn này** để mở form khác. Địa chỉ thay thế và ghi chú chỉ lưu theo đơn, không ghi đè tài khoản. Chuyển lại Không sẽ lấy lại thông tin mặc định.
+
+Nếu tài khoản chưa có địa chỉ, checkout hiện form và lưu địa chỉ đầu tiên khi bấm **Tiếp tục xác nhận**, trước khi tạo đơn. Lưu lỗi thì giữ nội dung đang nhập và chưa chuyển bước. Backend lưu lần đầu có điều kiện: hai tab cùng lưu chỉ một tab thắng, không ghi đè địa chỉ đã được lưu bởi tab khác. Khi gặp xung đột, tải lại để xem địa chỉ hiện tại. Đơn đã đặt giữ nguyên thông tin giao hàng kể cả khi tài khoản thay đổi địa chỉ về sau. Khách cũ chưa có địa chỉ vẫn đăng nhập bình thường, không cần seed/chuyển đổi dữ liệu.
+
+Kiểm tra ngày **29/10/2026**: **394 backend, 221 frontend** (200 ca Node + 21 luồng), build đạt; **5 ca HTTP/MongoDB thật** đạt trong database thử riêng đã dọn, và **15 ca Chrome** ở 1440/390/320px đạt bằng API giả lập. Không ghi địa chỉ hoặc tạo đơn trong dữ liệu cửa hàng khi kiểm tra.
+
 ## Chạy dự án
 
 Chức năng ưu đãi mới: **Ưu đãi** (`/offers`) cho mã công khai; **Mã của tôi** (`/my-vouchers`) cho mã đã lưu và quà riêng đúng tài khoản. Quản trị tạo chương trình tại **Mã ưu đãi**, cấu hình lượt mỗi khách, mức giảm tối đa, kênh phát hành và điều kiện lần mua đầu/sau giao thành công. Lưu mã không giữ lượt. Xem [quy tắc và kiểm tra mã giảm giá](VOUCHER_REVIEW.md#chức-năng-đã-hoàn-thiện).
+
+Checkout chỉ dùng mã đã lưu hoặc được cấp trong **Mã của tôi**, không nhập mã tự do. Tại **Kho ưu đãi**, lưu mã thành công làm thẻ mờ, khóa mọi thao tác và hiện **Mã đã được lưu** ở cuối; tải lại vẫn giữ trạng thái. Khách dùng hoặc bỏ lưu tại **Mã của tôi**. Backend kiểm tra sở hữu khi xem trước và tạo đơn; biết mã hoặc sửa URL không thay thế bước lưu mã.
 
 Đơn VNPAY mới chờ tối đa 30 phút trước bước tự đối soát; chỉ tự hủy/trả kho và lượt khi xác minh chưa thu tiền. Kết quả chưa rõ được giữ để đối soát, không ép hủy theo đồng hồ. Đơn cũ không có hạn chờ không bị hủy hồi tố. Worker chạy cùng backend; cập nhật frontend/backend đồng thời, không cần seed lại.
 

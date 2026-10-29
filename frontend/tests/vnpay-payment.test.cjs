@@ -330,7 +330,7 @@ test('changing the signed query hides a previously paid result before the new ef
   assert.doesNotMatch(text(h.render()), /Thanh toán thành công/);
 });
 
-const checkoutValues = () => [[{ _id: 'cart-1', product: { _id: 'shoe-1', name: 'Sneaker', price: 200000 }, color: 'Trắng', size: 40, quantity: 1 }], false, false, 2, '', [], '', null, '', false, null,
+const checkoutValues = () => [[{ _id: 'cart-1', product: { _id: 'shoe-1', name: 'Sneaker', price: 200000 }, color: 'Trắng', size: 40, quantity: 1 }], false, false, 2, '', null, '', false, null,
   { name: 'Khách hàng', phone: '0901234567', address: 'Đường A', city: 'Hà Nội', district: '', ward: '', notes: '' }, 'VNPAY'];
 
 test('checkout creates the order before automatic VNPAY redirect and does not send bank sender data', async () => {
@@ -343,7 +343,7 @@ test('checkout creates the order before automatic VNPAY redirect and does not se
 test('payment link failure preserves the created order and does not repeat checkout or clear its cart confirmation', async () => {
   const h = setup('Checkout', {}, checkoutValues()); const submit = h.button('Đặt giày').props.onClick(); h.calls[0].resolve({ data: orderOf() }); await settle();
   h.calls[1].reject({ response: { status: 409, data: { message: 'Thanh toán đang được xử lý' } } }); await submit;
-  assert.equal(h.values[3], 3); assert.equal(h.values[10]._id, orderOf()._id); assert.equal(h.calls.length, 2); assert.equal(h.redirects.length, 0); assert.match(text(h.render()), /Đơn hàng đã được tạo/);
+  assert.equal(h.values[3], 3); assert.equal(h.values[8]._id, orderOf()._id); assert.equal(h.calls.length, 2); assert.equal(h.redirects.length, 0); assert.match(text(h.render()), /Đơn hàng đã được tạo/);
   const resume = nodes(h.render()).find(node => typeof node.type === 'function' && node.props?.order?._id === orderOf()._id); assert.ok(resume);
 });
 

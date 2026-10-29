@@ -199,6 +199,7 @@ test('real MongoDB checkout, cancellation, payment and archived inventory', { ti
       type: 'fixed', discount: 10000, minOrder: 0, maxUses: 1,
       startDate: new Date(Date.now() - 60000), endDate: new Date(Date.now() + 3600000),
     });
+    assertStatus(await ctx.request('POST', `/api/vouchers/${voucher._id}/save`, { token: buyerToken }), 200);
     await addToCart(ctx, buyerToken, product, { quantity: 2 });
     await addToCart(ctx, buyerToken, product, { color: 'Đen', size: 41, quantity: 3 });
     const placed = assertStatus(await placeOrder(ctx, buyerToken, {

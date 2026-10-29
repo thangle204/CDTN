@@ -339,7 +339,7 @@ test('cart keeps its previous quantity on API failure and blocks another update 
 test('checkout and stored orders display the selected color and size', async () => {
   const { Checkout, MyOrders } = await components;
   const shipping = { name: 'Customer', phone: '0901234567', address: 'Street', city: 'City', district: '', ward: '', notes: '' };
-  const checkout = setup([[black], false, false, 2, '', [], '', null, '', false, null, shipping, 'COD', {}]);
+  const checkout = setup([[black], false, false, 2, '', null, '', false, null, shipping, 'COD', {}]);
   assert.match(text(render(Checkout, checkout)), /Màu Đen.*Size 40/);
   const orders = setup([[{ _id: 'order-1', orderStatus: 'Đang xử lý', totalPrice: 130000, orderItems: [{ ...black, name: shoe.name, image: shoe.image, price: shoe.price }], shippingAddress: shipping, paymentMethod: 'COD', createdAt: '2026-10-14' }], false, false, '']);
   assert.match(text(render(MyOrders, orders)), /Màu: Đen.*Size: 40/);
@@ -375,14 +375,14 @@ test('checkout uses sale totals for voucher previews and the confirmed server to
   const { Checkout } = await components;
   const shipping = { name: 'Customer', phone: '0901234567', address: 'Street', city: 'City', district: '', ward: '', notes: '' };
   const row = { ...black, product: { ...shoe, discountPercent: 25 }, price: 1, quantity: 2 };
-  const h = setup([[row], false, false, 2, '', [], '', null, '', false, null, shipping, 'COD']);
+  const h = setup([[row], false, false, 2, '', null, '', false, null, shipping, 'COD']);
   assert.match(text(render(Checkout, h)), /Tạm tính\s+150\.000₫/);
   await findButton(render(Checkout, h), 'Đặt giày').props.onClick();
   const payload = h.calls.find(call => call.name === 'createOrder').args[0];
   assert.equal(payload.expectedTotalPrice, 180000);
   assert.equal(payload.discountPercent, undefined);
-  const voucher = setup([[row], false, false, 2, '', [], 'SALE', null, '', false, null, shipping, 'COD']);
-  const form = nodes(render(Checkout, voucher)).find(node => node.type === 'form');
-  await form.props.onSubmit({ preventDefault() {} });
+  const voucher = setup([[row], false, false, 2, '', null, '', false, null, shipping, 'COD']);
+  const selector = nodes(render(Checkout, voucher)).find(node => node.type?.name === 'VoucherSelector');
+  await selector.props.onChoose('SALE');
   assert.deepEqual(voucher.calls.find(call => call.name === 'applyVoucher').args, ['SALE', 150000]);
 });

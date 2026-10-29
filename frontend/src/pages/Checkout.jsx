@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { cartAPI, ordersAPI, vouchersAPI } from '../utils/api';
 import { productImageUrl } from '../utils/productVariants';
 import { cartItemPrice } from '../utils/productPricing';
+import { SHIPPING_ADDRESS_FIELDS, shippingAddressOf, hasShippingAddress, cleanShippingAddress, shippingAddressLine } from '../utils/shippingAddress';
 import { canPayWithVnpay, vnpaySandboxUrl } from '../utils/vnpay';
 import VnpayPaymentButton from '../components/VnpayPaymentButton';
 import VoucherSelector from '../components/VoucherSelector';
@@ -14,7 +15,7 @@ const money = value => Number(value || 0).toLocaleString('vi-VN') + '₫';
 const inputClass = 'w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-red-500';
 
 const Checkout = () => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, updateProfile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const requestedVoucher = new URLSearchParams(location.search).get('voucher');
@@ -23,14 +24,14 @@ const Checkout = () => {
   const [submitting, setSubmitting] = useState(false);
   const [step, setStep] = useState(1);
   const [error, setError] = useState('');
-  const [vouchers, setVouchers] = useState([]);
-  const [voucherCode, setVoucherCode] = useState('');
   const [quote, setQuote] = useState(null);
   const [voucherError, setVoucherError] = useState('');
   const [applyingVoucher, setApplyingVoucher] = useState(false);
   const [createdOrder, setCreatedOrder] = useState(null);
-  const [shippingInfo, setShippingInfo] = useState({ name: '', phone: '', address: '', city: '', district: '', ward: '', notes: '' });
+  const [shippingInfo, setShippingInfo] = useState(() => ({ ...shippingAddressOf(user), notes: '' }));
   const [paymentMethod, setPaymentMethod] = useState('COD');
+  const [changeShipping, setChangeShipping] = useState(false);
+  const [savingAddress, setSavingAddress] = useState(false);
   const mounted = useRef(true);
   const accountRef = useRef(user?._id);
   const submitRef = useRef(null);
@@ -38,23 +39,34 @@ const Checkout = () => {
   const voucherBusy = useRef(false);
   const voucherContext = useRef('');
   const requestedApplied = useRef('');
+  const shippingOwner = useRef(user?._id);
+  const addressSubmission = useRef(null);
   accountRef.current = user?._id;
+  const hasSavedAddress = hasShippingAddress(user?.shippingAddress);
+
+  useEffect(() => {
+    if (shippingOwner.current !== user?._id) {
+      shippingOwner.current = user?._id;
+      addressSubmission.current = null;
+      setShippingInfo({ ...shippingAddressOf(user), notes: '' });
+      setChangeShipping(false);
+      setSavingAddress(false);
+    } else if (hasSavedAddress && !changeShipping) {
+      setShippingInfo(previous => ({ ...shippingAddressOf(user), notes: previous.notes || '' }));
+    }
+  }, [user?._id, user?.shippingAddress, user?.name, user?.phone, changeShipping]);
 
   useEffect(() => {
     if (authLoading) return;
     if (!user) { navigate('/login', { replace: true, state: { from: '/checkout' + (location.search || '') } }); return; }
     let active = true;
-    setShippingInfo(previous => ({ ...previous, name: previous.name || user.name || '', phone: previous.phone || user.phone || '' }));
     const loadCheckout = async () => {
       setLoading(true);
       try {
-        const [cart, availableVouchers] = await Promise.allSettled([cartAPI.getCart(), vouchersAPI.getActiveVouchers()]);
+        const { data } = await cartAPI.getCart();
         if (!active) return;
-        if (cart.status === 'rejected') throw cart.reason;
-        if (!cart.value.data.length) { navigate(requestedVoucher ? `/cart?voucher=${encodeURIComponent(requestedVoucher)}` : '/cart', { replace: true }); return; }
-        setCartItems(cart.value.data);
-        if (availableVouchers.status === 'fulfilled') setVouchers(availableVouchers.value.data);
-        else setVoucherError('Chưa tải được ưu đãi. Bạn vẫn có thể nhập mã voucher.');
+        if (!data.length) { navigate(requestedVoucher ? `/cart?voucher=${encodeURIComponent(requestedVoucher)}` : '/cart', { replace: true }); return; }
+        setCartItems(data);
       } catch (failure) {
         if (active) setError(failure.response?.data?.message || 'Không thể tải giỏ hàng. Vui lòng quay lại giỏ hàng và thử lại.');
       } finally {
@@ -63,7 +75,7 @@ const Checkout = () => {
     };
     loadCheckout();
     return () => { active = false; };
-  }, [user, authLoading, navigate]);
+  }, [user?._id, authLoading, navigate]);
 
   useEffect(() => {
     mounted.current = true;
@@ -74,6 +86,7 @@ const Checkout = () => {
       mounted.current = false;
       submitRef.current?.controller.abort();
       submitRef.current = null;
+      addressSubmission.current = null;
     };
   }, [user?._id]);
 
@@ -99,7 +112,6 @@ const Checkout = () => {
       const { data } = await vouchersAPI.applyVoucher(code.trim(), subtotal);
       if (!current()) return;
       setQuote(data);
-      setVoucherCode(data.voucher.code);
     } catch (failure) {
       if (!current()) return;
       setQuote(null);
@@ -116,7 +128,7 @@ const Checkout = () => {
   }, [loading, user?._id, requestedVoucher]);
 
   const submitOrder = async () => {
-    if (submitting || submitRef.current || applyingVoucher || !cartItems.length) return;
+    if (submitting || submitRef.current || applyingVoucher || savingAddress || !cartItems.length || shippingOwner.current !== user?._id) return;
     const operation = { account: user?._id, controller: new AbortController() };
     submitRef.current = operation;
     const active = () => mounted.current && submitRef.current === operation && accountRef.current === operation.account;
@@ -152,7 +164,6 @@ const Checkout = () => {
       setError(message);
       if (failure.response?.status === 409) {
         setQuote(null);
-        setVoucherCode('');
         setVoucherError('');
         setStep(1);
         setCartItems([]);
@@ -172,15 +183,32 @@ const Checkout = () => {
     }
   };
 
-  const proceed = (event) => {
+  const proceed = async (event) => {
     event.preventDefault();
-    if (!/^0\d{9}$/.test(shippingInfo.phone.trim())) { setError('Số điện thoại phải gồm 10 chữ số, bắt đầu bằng 0.'); return; }
-    if (!shippingInfo.name.trim() || !shippingInfo.address.trim() || !shippingInfo.city.trim()) { setError('Vui lòng điền đầy đủ thông tin giao hàng.'); return; }
-    setError('');
-    setStep(2);
+    if (addressSubmission.current || savingAddress || applyingVoucher || shippingOwner.current !== user?._id) return;
+    const operation = { account: user?._id };
+    addressSubmission.current = operation;
+    const active = () => mounted.current && addressSubmission.current === operation && accountRef.current === operation.account;
+    let result;
+    try {
+      setError('');
+      const shippingAddress = cleanShippingAddress(shippingInfo);
+      if (!hasSavedAddress) {
+        setSavingAddress(true);
+        result = await updateProfile({ shippingAddress, onlyIfAddressMissing: true });
+        if (!active() || result.stale || result.isCurrent && !result.isCurrent()) return;
+        if (!result.success) throw Error(result.message || 'Chưa lưu được địa chỉ. Vui lòng thử lại.');
+      }
+      if (active()) setStep(2);
+    } catch (failure) {
+      if (active() && (!result?.isCurrent || result.isCurrent())) setError(failure.message || 'Chưa lưu được địa chỉ. Vui lòng thử lại.');
+    } finally {
+      if (active()) setSavingAddress(false);
+      if (addressSubmission.current === operation) addressSubmission.current = null;
+    }
   };
 
-  if (authLoading || loading) return <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4"><div className="spinner" /><p>Đang tải thông tin thanh toán...</p></div>;
+  if (authLoading || loading || shippingOwner.current !== user?._id) return <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4"><div className="spinner" /><p>Đang tải thông tin thanh toán...</p></div>;
 
   if (step === 3) return (
     <div className="container mx-auto px-4 py-16 max-w-2xl">
@@ -215,13 +243,21 @@ const Checkout = () => {
               <form onSubmit={proceed} className="space-y-6">
                 <section className="bg-white rounded-lg shadow p-6 shop-panel">
                   <h2 className="text-xl font-bold mb-5 flex items-center gap-2"><FaMapMarkerAlt className="text-red-600" />Thông tin nhận giày</h2>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    {[['name', 'Họ tên người nhận', true], ['phone', 'Số điện thoại', true], ['address', 'Số nhà, tên đường', true], ['city', 'Tỉnh / Thành phố', true], ['district', 'Quận / Huyện'], ['ward', 'Phường / Xã']].map(([name, label, required]) => (
+                  {hasSavedAddress ? <>
+                    <div className="mb-5 rounded-lg border border-gray-200 bg-gray-50 p-4"><p className="mb-2 text-sm text-gray-500">Địa chỉ đã lưu trong tài khoản</p><p className="font-semibold">{user.shippingAddress.name} · {user.shippingAddress.phone}</p><p className="mt-2 break-words text-gray-600">{shippingAddressLine(user.shippingAddress)}</p></div>
+                    <fieldset className="mb-5" disabled={savingAddress}><legend className="mb-3 font-semibold text-gray-800">Bạn có muốn thay đổi thông tin giao hàng không?</legend><div className="flex flex-wrap gap-4">
+                      <label className="flex cursor-pointer items-center gap-2"><input type="radio" name="changeShipping" value="no" checked={!changeShipping} onChange={() => { setChangeShipping(false); setShippingInfo(previous => ({ ...shippingAddressOf(user), notes: previous.notes || '' })); }} />Không, dùng thông tin đã lưu</label>
+                      <label className="flex cursor-pointer items-center gap-2"><input type="radio" name="changeShipping" value="yes" checked={changeShipping} onChange={() => setChangeShipping(true)} />Có, đổi cho đơn này</label>
+                    </div></fieldset>
+                  </> : <p className="mb-5 rounded-lg bg-blue-50 p-4 text-sm text-blue-900">Bạn chưa có địa chỉ giao hàng. Nhập thông tin bên dưới; địa chỉ sẽ được lưu vào tài khoản khi bấm Tiếp tục xác nhận.</p>}
+                  {(!hasSavedAddress || changeShipping) && <fieldset disabled={savingAddress} className="grid gap-4 md:grid-cols-2" aria-label={hasSavedAddress ? 'Thông tin giao hàng riêng cho đơn này' : 'Địa chỉ giao hàng đầu tiên'}>
+                    {SHIPPING_ADDRESS_FIELDS.map(([name, label, required, max]) => (
                       <label key={name} className="block text-sm font-medium text-gray-700">{label}{required ? ' *' : ''}
-                        <input name={name} type={name === 'phone' ? 'tel' : 'text'} autoComplete={name === 'name' ? 'name' : name === 'phone' ? 'tel' : 'off'} required={required} maxLength={name === 'phone' ? 10 : name === 'address' ? 500 : 120} value={shippingInfo[name]} onChange={event => setShippingInfo({ ...shippingInfo, [name]: event.target.value })} className={inputClass + ' mt-2'} />
+                        <input name={name} type={name === 'phone' ? 'tel' : 'text'} autoComplete={name === 'name' ? 'shipping name' : name === 'phone' ? 'shipping tel' : 'off'} required={required} maxLength={max} value={shippingInfo[name]} onChange={event => setShippingInfo(previous => ({ ...previous, [name]: event.target.value }))} className={inputClass + ' mt-2'} />
                       </label>
                     ))}
-                  </div>
+                    {hasSavedAddress && <p className="text-sm text-gray-500 md:col-span-2">Thông tin này chỉ dùng cho đơn hàng hiện tại, không lưu đè địa chỉ trong tài khoản.</p>}
+                  </fieldset>}
                   <label className="block mt-4 text-sm font-medium">Ghi chú giao hàng<textarea name="notes" maxLength={1000} rows={3} value={shippingInfo.notes} onChange={event => setShippingInfo({ ...shippingInfo, notes: event.target.value })} className={inputClass + ' mt-2'} /></label>
                 </section>
                 <section className="bg-white rounded-lg shadow p-6 shop-panel">
@@ -231,7 +267,7 @@ const Checkout = () => {
                   ))}
                   {paymentMethod === 'VNPAY' && <p className="rounded-lg bg-blue-50 p-4 text-blue-900">Sau khi đặt hàng, bạn sẽ được chuyển đến VNPAY Sandbox để chọn QR hoặc thẻ test. Đây là môi trường thử nghiệm; trạng thái thanh toán được cập nhật tự động từ VNPAY.</p>}
                 </section>
-                <button type="submit" disabled={applyingVoucher} className="w-full bg-red-600 text-white py-3 rounded-lg font-semibold disabled:opacity-50">Tiếp tục xác nhận</button>
+                <button type="submit" disabled={applyingVoucher || savingAddress} className="w-full bg-red-600 text-white py-3 rounded-lg font-semibold disabled:opacity-50">{savingAddress ? 'Đang lưu địa chỉ...' : 'Tiếp tục xác nhận'}</button>
               </form>
             ) : (
               <section className="bg-white rounded-lg shadow p-6 shop-panel">
@@ -253,12 +289,8 @@ const Checkout = () => {
           <aside className="space-y-6">
             <section className="bg-white rounded-lg shadow p-6 shop-panel">
               <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><FaTag className="text-red-600" />Ưu đãi</h2>
-              <form onSubmit={event => { event.preventDefault(); applyVoucher(voucherCode); }} className="flex gap-2">
-                <input aria-label="Mã voucher" maxLength={50} placeholder="Nhập mã voucher" value={voucherCode} onChange={event => setVoucherCode(event.target.value)} className={inputClass} />
-                <button type="submit" disabled={applyingVoucher || submitting} className="bg-red-600 text-white px-3 rounded-lg whitespace-nowrap disabled:opacity-50">{applyingVoucher ? 'Đang kiểm tra' : 'Áp dụng'}</button>
-              </form>
               {voucherError && <p role="alert" className="text-sm text-red-600 mt-3">{voucherError}</p>}
-              {quote && <p className="flex items-center justify-between gap-2 bg-green-50 text-green-700 p-3 rounded-lg mt-3 text-sm"><span>Đã áp dụng {quote.voucher.code}</span><button aria-label="Bỏ voucher" disabled={submitting} onClick={() => { setQuote(null); setVoucherCode(''); setVoucherError(''); }}><FaTimes /></button></p>}
+              {quote && <p className="flex items-center justify-between gap-2 bg-green-50 text-green-700 p-3 rounded-lg mt-3 text-sm"><span>Đã áp dụng {quote.voucher.code}</span><button aria-label="Bỏ voucher" disabled={submitting} onClick={() => { setQuote(null); setVoucherError(''); }}><FaTimes /></button></p>}
               <VoucherSelector userId={user?._id} subtotal={subtotal} onChoose={applyVoucher} selectedCode={quote?.voucher?.code} busy={applyingVoucher || submitting} />
             </section>
             <section className="bg-white rounded-lg shadow p-6 shop-panel">
